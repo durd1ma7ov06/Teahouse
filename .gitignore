@@ -1,0 +1,11 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+teahouse.db
+*.db
+*.log
+.env
+.DS_Store
