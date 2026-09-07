@@ -117,20 +117,26 @@ async def _call_with_rotation(func, *args, max_retries=None, **kwargs):
         try:
             return await func(*args, **kwargs)
         except Exception as e:
-            error_str = str(e).lower()
+            details = getattr(e, "details", "")
+            if callable(details):
+                try:
+                    details = details()
+                except Exception:
+                    details = ""
+            error_str = f"{e} {repr(e)} {details}".lower()
             last_error = e
 
-            # Check if it's a rate limit or quota error
+            # Check if it's a rate limit or quota error or temporary server issue
             if any(keyword in error_str for keyword in [
                 "resource_exhausted", "rate limit", "quota",
-                "429", "too many requests", "exhausted"
+                "429", "too many requests", "exhausted", "unavailable",
+                "deadline_exceeded", "timed out"
             ]):
-                logger.warning(f"⚠️ Key #{_rotator.current_index + 1} limit tugadi: {e}")
+                logger.warning(f"⚠️ Key #{_rotator.current_index + 1} limit yoki xatolik: {repr(e)[:120]}")
                 _rotator.rotate()
                 _rotator.configure_current()
                 continue
             else:
-                # Not a rate limit error — don't retry
                 raise
 
     # All keys exhausted
@@ -165,23 +171,13 @@ async def chat_interview(messages: list[dict]) -> str:
             role = "user" if msg["role"] == "user" else "model"
             gemini_messages.append({"role": role, "parts": [msg["content"]]})
 
-        try:
-            # Generate content with timeout
-            response = await asyncio.wait_for(
-                model.generate_content_async(gemini_messages),
-                timeout=12.0
-            )
-            if response and response.text:
-                return response.text.strip()
-        except Exception as e:
-            logger.warning(f"generate_content_async failed: {e}, attempting start_chat")
-            chat = model.start_chat(history=gemini_messages[:-1])
-            response = await asyncio.wait_for(
-                chat.send_message_async(gemini_messages[-1]["parts"][0]),
-                timeout=12.0
-            )
-            if response and response.text:
-                return response.text.strip()
+        # Generate content with timeout
+        response = await asyncio.wait_for(
+            model.generate_content_async(gemini_messages),
+            timeout=12.0
+        )
+        if response and response.text:
+            return response.text.strip()
         return "Tushundim! Juda qiziqarli. Hozirda qanday maqsad yoki loyihalar ustida ishlayapsiz?"
 
     try:

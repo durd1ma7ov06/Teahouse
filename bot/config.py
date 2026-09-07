@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # Google Gemini (10 ta key vergul bilan ajratilgan)
     gemini_api_keys: str = Field(_DEFAULT_GEMINI_KEYS, alias="GEMINI_API_KEYS")
-    gemini_model: str = Field("gemini-3.6-flash", alias="GEMINI_MODEL")
+    gemini_model: str = Field("gemini-3.1-flash-lite", alias="GEMINI_MODEL")
 
     @property
     def gemini_keys_list(self) -> list[str]:
