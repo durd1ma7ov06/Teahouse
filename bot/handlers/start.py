@@ -135,18 +135,31 @@ async def _send_welcome(message: Message, first_name: str, has_profile: bool):
     is_admin = message.from_user.id in settings.admin_ids_list
 
     if has_profile:
+        bot_info = await message.bot.get_me()
+        ref_link = f"https://t.me/{bot_info.username or 'teahouse_bot'}?start=ref_{message.from_user.id}"
+        import urllib.parse
+        share_text = "Toshkentdagi tadbirkorlar va mutaxassislar bilan networking! Teahouse saralash anketasidan o'ting:"
+        share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote(share_text)}"
+
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Do'stlarga ulashish (Telegram)", url=share_url)],
+            [InlineKeyboardButton(text="Mening anketam", callback_data="view_my_profile")],
+        ])
+
         text = (
             f"Assalomu alaykum, {first_name}.\n\n"
             "Sizning anketangiz muvaffaqiyatli qabul qilingan va sun'iy intellekt tahlil tizimida faol holatda.\n\n"
             "Eslatma:\n"
-            "- Ro'yxatdan o'tish 25-sentyabr soat 23:59 gacha davom etadi;\n"
+            "- Qabul 25-sentyabr soat 23:59 gacha davom etadi;\n"
             "- 25-sentyabr kuni sun'iy intellekt barcha anketalarni tahlil qilib, sizga mos 3 nafar sherikni tanlaydi;\n"
             "- Shu kuni sizga shaxsiy Telegram Mini App akkauntingiz va uchrashuv stoli e'lon qilinadi.\n\n"
-            "Hozircha boshqa hech qanday amal bajarishingiz shart emas. Anketangizni ko'rish uchun 'Mening anketam' tugmasidan foydalanishingiz mumkin."
+            "DO'STLARNI TAKLIF QILISH:\n"
+            "O'zingizga munosib tadbirkor va mutaxassis do'stlaringizni taklif qiling:\n"
+            f"{ref_link}"
         )
         await message.answer(
             text,
-            reply_markup=main_menu_keyboard(is_admin=is_admin),
+            reply_markup=kb,
             parse_mode=None,
         )
     elif not settings.is_registration_open():

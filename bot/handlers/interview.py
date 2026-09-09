@@ -535,19 +535,34 @@ async def handle_confirm(callback: CallbackQuery, state: FSMContext):
 
     await state.clear()
 
+    bot_info = await callback.bot.get_me()
+    bot_username = bot_info.username or "teahouse_bot"
+    ref_link = f"https://t.me/{bot_username}?start=ref_{callback.from_user.id}"
+    share_text = "Toshkentdagi tadbirkorlar va kuchli mutaxassislar bilan networking! Teahouse saralash anketasidan o'ting:"
+    import urllib.parse
+    share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote(share_text)}"
+
+    ref_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Do'stlarga ulashish (Telegram)", url=share_url)],
+        [InlineKeyboardButton(text="Anketamni ko'rish", callback_data="view_my_profile")],
+    ])
+
     final_text = (
-        "Tabriklaymiz! Sizning anketangiz to'liq qabul qilindi va tahlil tizimiga kiritildi.\n\n"
+        "Anketangiz to'liq qabul qilindi va tahlil tizimiga kiritildi!\n\n"
         "Keyingi bosqich qanday bo'ladi:\n"
-        "- Ro'yxatdan o'tish 25-sentyabr soat 23:59 da to'xtatiladi;\n"
+        "- Qabul 25-sentyabr soat 23:59 da to'xtatiladi;\n"
         "- Sun'iy intellekt siz kiritgan yutuqlar, tajriba va qidirayotgan mezonlaringiz asosida "
         "sizga eng munosib 3 nafar suhbatdoshni tanlaydi;\n"
-        "- 25-sentyabr kuni sizga Telegram orqali shaxsiy stolingiz, suhbatdoshlar BIOsi va "
+        "- 25-sentyabr kuni sizga Telegram orqali shaxsiy stolingiz, suhbatdoshlar xulosasi (BIO) va "
         "Toshkent markazidagi qulay qahvaxonadagi uchrashuv tafsilotlari yuboriladi.\n\n"
-        "Muvaffaqiyat tilaymiz!"
+        "DO'STLARNI TAKLIF QILISH:\n"
+        "O'zingizga o'xshagan tadbirkor va kuchli mutaxassis do'stlaringizni taklif qiling. "
+        "Sizning shaxsiy taklif havolangiz:\n"
+        f"{ref_link}\n\n"
+        "Pastdagi tugma orqali havolani do'stlaringizga bittada yuborishingiz mumkin:"
     )
 
-    await callback.message.edit_text(final_text)
-    await callback.message.answer("Bosh menyu:", reply_markup=main_menu_keyboard())
+    await callback.message.edit_text(final_text, reply_markup=ref_keyboard)
 
 
 @router.callback_query(InterviewStates.confirming_profile, F.data == "redo_interview")
@@ -555,3 +570,51 @@ async def handle_redo(callback: CallbackQuery, state: FSMContext):
     """Qaytadan boshlash."""
     await callback.answer()
     await _begin_stage1(callback.message, state)
+
+
+@router.callback_query(F.data == "view_my_profile")
+async def view_my_profile_callback(callback: CallbackQuery):
+    """Foydalanuvchining o'z anketasini ko'rsatish."""
+    await callback.answer()
+    async with async_session() as session:
+        res_u = await session.execute(select(User).where(User.telegram_id == callback.from_user.id))
+        user = res_u.scalar_one_or_none()
+        if not user:
+            await callback.message.answer("Ma'lumot topilmadi.")
+            return
+
+        res_p = await session.execute(select(Profile).where(Profile.user_id == user.id))
+        profile = res_p.scalar_one_or_none()
+
+    if not profile or not profile.bio_summary:
+        await callback.message.answer("Siz hali anketani to'ldirmagansiz.")
+        return
+
+    bot_info = await callback.bot.get_me()
+    ref_link = f"https://t.me/{bot_info.username or 'teahouse_bot'}?start=ref_{callback.from_user.id}"
+    import urllib.parse
+    share_text = "Toshkentdagi tadbirkorlar va mutaxassislar bilan networking! Teahouse saralashidan o'ting:"
+    share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote(share_text)}"
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Do'stlarga ulashish (Telegram)", url=share_url)],
+        [InlineKeyboardButton(text="Qaytadan to'ldirish", callback_data="redo_interview")],
+    ])
+
+    text = (
+        "SIZNING ANKETANGIZ VA PROFILINGIZ\n\n"
+        f"Ism: {user.first_name}\n"
+        f"Telefon: {user.phone or '—'}\n"
+        f"Kasb va lavozim: {profile.role or '—'}\n"
+        f"Kompaniya: {profile.company or '—'}\n"
+        f"Soha: {profile.industry or '—'}\n"
+        f"Tajriba: {profile.seniority or '—'} ({profile.experience_years or 0} yil)\n"
+        f"Eng katta yutug'i: {profile.achievements or '—'}\n"
+        f"Qidirayotgan sherigi: {profile.target_partner or '—'}\n"
+        f"Kerakli daraja: {profile.target_seniority or '—'}\n"
+        f"Boshqalarga taklifi: {profile.can_offer or '—'}\n\n"
+        f"AI Xulosasi (BIO):\n\"{profile.bio_summary}\"\n\n"
+        f"Sizning taklif havolangiz:\n{ref_link}"
+    )
+    await callback.message.answer(text, reply_markup=kb)
+
