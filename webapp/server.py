@@ -332,7 +332,7 @@ async def export_members_csv():
         results = (await session.execute(stmt)).all()
 
         output = io.StringIO()
-        writer = csv.writer(output)
+        writer = csv.writer(output, delimiter=";")
 
         # Sarlavhalar
         writer.writerow([
@@ -370,10 +370,10 @@ async def export_members_csv():
                 profile.seniority if profile else "",
                 profile.experience_years if profile else "",
                 profile.age if profile else "",
-                profile.achievements if profile else "",
+                profile.achievements if profile and hasattr(profile, "achievements") and profile.achievements else "",
                 profile.target_partner if profile else "",
                 profile.target_industry if profile else "",
-                profile.target_seniority if profile else "",
+                profile.target_seniority if profile and hasattr(profile, "target_seniority") and profile.target_seniority else "",
                 profile.can_offer if profile else "",
                 profile.interests if profile else "",
                 profile.bio_summary if profile else "",

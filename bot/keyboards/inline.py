@@ -3,18 +3,10 @@ from bot.config import settings
 
 
 def start_keyboard() -> InlineKeyboardMarkup:
-    """Boshlash va ma'lumot klaviaturasi."""
-    if settings.is_registration_open():
-        return InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Anketani boshlash", callback_data="start_interview")],
-            [InlineKeyboardButton(text="Loyiha haqida", callback_data="about_teahouse")],
-        ])
-    else:
-        buttons = []
-        if settings.webapp_url and settings.webapp_url.startswith("https://"):
-            buttons.append([InlineKeyboardButton(text="Teahouse Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
-        buttons.append([InlineKeyboardButton(text="Loyiha haqida", callback_data="about_teahouse")])
-        return InlineKeyboardMarkup(inline_keyboard=buttons)
+    """Boshlash klaviaturasi — faqat ro'yxatdan o'tish tugmasi."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Ro'yxatdan o'tish", callback_data="start_interview")],
+    ])
 
 
 def confirm_keyboard() -> InlineKeyboardMarkup:

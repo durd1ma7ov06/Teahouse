@@ -200,17 +200,19 @@ async def admin_export_csv(event: Message | CallbackQuery):
         "Kompaniya / Loyiha",
         "Faoliyat sohasi",
         "Ish tajribasi (yil)",
+        "Eng katta yutug'i va natijasi",
         "Qidirayotgan sherigi",
         "Qaysi sohadan sherik izlamoqda",
+        "Qidirilayotgan daraja",
         "O'zi nima taklif qila oladi",
         "Muhokama mavzulari",
         "Qisqa xulosa (Bio Summary)",
         "Ro'yxatdan o'tgan sana",
     ]
 
-    # utf-8-sig orqali yozilsa, Microsoft Excel dasturi o'zbekcha harflarni to'g'ri va ustunlarga bo'lib ochadi
+    # delimiter=';' orqali WPS Office va Excel har bir ustunni chiroyli qilib ajratadi
     with open(filepath, mode="w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, delimiter=";")
         writer.writerow(fieldnames)
 
         for u, p in rows:
@@ -226,8 +228,10 @@ async def admin_export_csv(event: Message | CallbackQuery):
                 p.company if p and p.company else "",
                 p.industry if p and p.industry else "",
                 p.experience_years if p and p.experience_years else "",
+                p.achievements if p and hasattr(p, "achievements") and p.achievements else "",
                 p.target_partner if p and p.target_partner else (p.current_goal if p else ""),
                 p.target_industry if p and p.target_industry else "",
+                p.target_seniority if p and hasattr(p, "target_seniority") and p.target_seniority else "",
                 p.can_offer if p and p.can_offer else "",
                 p.interests if p and p.interests else "",
                 p.bio_summary if p and p.bio_summary else "",

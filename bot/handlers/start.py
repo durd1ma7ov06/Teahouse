@@ -163,21 +163,13 @@ async def _send_welcome(message: Message, first_name: str, has_profile: bool):
         )
     else:
         text = (
-            f"Assalomu alaykum, {first_name}. Teahouse professional networking hamjamiyatiga xush kelibsiz.\n\n"
-            "Biz Toshkentdagi tadbirkorlar, mutaxassislar va startapchilarni sun'iy intellekt orqali chuqur tahlil qilib, bir-biriga eng ko'p foydasi tegadigan 4 kishilik eksklyuziv stollarda birlashtiramiz.\n\n"
-            "Muhim sana: Ro'yxatdan o'tish va anketalarni saralash 25-sentyabr soat 23:59 gacha davom etadi. "
-            "25-sentyabrda qabul to'xtatilib, sun'iy intellekt siz uchun eng munosib sheriklarni tanlaydi va shaxsiy Mini App akkauntingizni faollashtiradi.\n\n"
-            "Keling, sizga eng to'g'ri sheriklarni topishimiz uchun yaqindan tanishib olaylik.\n\n"
-            "Boshlash uchun pastdagi tugmani bosing:"
+            f"Assalomu alaykum, {first_name}.\n\n"
+            "Teahouse professional networking platformasiga xush kelibsiz.\n\n"
+            "Biznesingiz yoki loyihangiz uchun mos hamkorlar, investorlar va tajribali mutaxassislar davrasiga qo'shilish uchun ro'yxatdan o'ting.\n\n"
+            "Anketani to'ldirish uchun pastdagi tugmani bosing:"
         )
         await message.answer(
             text,
             reply_markup=start_keyboard(),
-            parse_mode=None,
-        )
-        # Send clean keyboard
-        await message.answer(
-            "Asosiy menyu faollashdi:",
-            reply_markup=main_menu_keyboard(is_admin=is_admin),
             parse_mode=None,
         )
