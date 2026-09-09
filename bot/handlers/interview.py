@@ -554,24 +554,24 @@ async def handle_confirm(callback: CallbackQuery, state: FSMContext):
     ])
 
     final_text = (
-        "Anketangiz to'liq qabul qilindi va tahlil tizimiga kiritildi!\n\n"
-        "Keyingi bosqich tartibi:\n"
-        "- Qabul 25-sentyabr soat 23:59 da to'xtatiladi;\n"
-        "- Sun'iy intellekt siz kiritgan yutuqlar, tajriba va qidirayotgan mezonlaringiz asosida "
-        "sizga eng munosib 3 nafar suhbatdoshni tanlaydi;\n"
-        "- 25-sentyabr kuni sizga Telegram orqali shaxsiy stolingiz, suhbatdoshlar xulosasi (BIO) va "
-        "Toshkent markazidagi qulay qahvaxonadagi uchrashuv tafsilotlari yuboriladi.\n\n"
+        "Anketangiz muvaffaqiyatli qabul qilindi va tasdiqlandi!\n\n"
+        "Bizni kuting! Sun'iy intellekt tizimimiz siz kiritgan ma'lumotlar, sohangiz va erishgan natijalaringizni "
+        "chuqur tahlil qilib, aynan sizga mos va manfaatli bo'lgan jamoaviy davra (3 nafar suhbatdosh)ni tanlaydi.\n\n"
+        "25-sentyabr kuni soat 23:59 da saralash yakunlanadi va biz sizga shaxsiy stolingiz, "
+        "sheriklaringiz kimligi hamda Toshkent markazidagi shinam qahvaxonadagi uchrashuv tafsilotlari bilan qaytamiz!\n\n"
         "DO'STLARNI TAKLIF QILISH:\n"
-        "O'zingizga munosib tadbirkor va kuchli mutaxassis do'stlaringizni taklif qiling. "
+        "O'zingiz kabi intiluvchan tadbirkor va kuchli mutaxassis do'stlaringizni taklif qiling. "
+        "Davramiz qanchalik keng bo'lsa, siz uchun hamkorlik imkoniyatlari shunchalik yuqori bo'ladi.\n\n"
         "Sizning shaxsiy taklif havolangiz:\n"
-        f"{ref_link}\n\n"
-        "Quyidagi tugmalardan birini tanlashingiz mumkin:"
+        f"{ref_link}"
     )
 
     await callback.message.edit_text(final_text, reply_markup=ref_keyboard)
-    # Anketa to'liq yakunlangach, pastdagi doimiy menyuni ham chiqarib qo'yamiz
     is_admin = callback.from_user.id in settings.admin_ids_list
-    await callback.message.answer("Pastdagi menyu orqali profilingizni ko'rishingiz yoki do'stlaringizni taklif qilishingiz mumkin:", reply_markup=main_menu_keyboard(is_admin=is_admin))
+    await callback.message.answer(
+        "Boshqaruv menyusi faollashdi:",
+        reply_markup=main_menu_keyboard(is_admin=is_admin)
+    )
 
 
 @router.callback_query(InterviewStates.confirming_profile, F.data == "redo_interview")
