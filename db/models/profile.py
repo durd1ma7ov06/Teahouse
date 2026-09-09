@@ -25,6 +25,8 @@ class Profile(Base, TimestampMixin):
     experience_years: Mapped[Optional[int]] = mapped_column(Integer)
     age: Mapped[Optional[int]] = mapped_column(Integer)
     interests: Mapped[Optional[str]] = mapped_column(Text)
+    target_partner: Mapped[Optional[str]] = mapped_column(Text)
+    target_industry: Mapped[Optional[str]] = mapped_column(String(255))
     bio_summary: Mapped[Optional[str]] = mapped_column(Text)
 
     # Relationships

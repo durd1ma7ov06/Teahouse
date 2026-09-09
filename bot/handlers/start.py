@@ -15,7 +15,6 @@ from db.session import async_session
 from db.models import User, Referral, ReputationScore, Profile
 from bot.keyboards.inline import start_keyboard
 from bot.keyboards.reply import main_menu_keyboard
-from bot.states.interview import InterviewStates
 from bot.services.notifications import send_typing
 
 logger = logging.getLogger(__name__)
@@ -59,37 +58,21 @@ async def start_fresh(message: Message, state: FSMContext):
     await _send_welcome(message, first_name, has_profile)
 
 
-@router.callback_query(F.data == "start_interview")
-async def start_interview_callback(callback: CallbackQuery, state: FSMContext):
-    """User tapped '☕ Boshlash' — begin the interview."""
-    await callback.answer()
-    await state.set_state(InterviewStates.asking_role)
-
-    await send_typing(callback.message.chat.id)
-    await callback.message.edit_text(
-        "Ajoyib! Keling, tanishib olaylik 😊\n\n"
-        "Avval — siz nima ish qilasiz? Kasbingiz, kompaniyangiz yoki loyihangiz haqida gapirib bering.\n\n"
-        "💡 Yozib yoki 🎤 ovozli xabar yuborishingiz mumkin.",
-    )
-
-
 @router.callback_query(F.data == "about_teahouse")
 async def about_teahouse(callback: CallbackQuery):
-    """User tapped 'ℹ️ Teahouse haqida'."""
+    """User tapped 'Teahouse haqida'."""
     await callback.answer()
 
     await callback.message.edit_text(
-        "🍵 *Teahouse* — Toshkentdagi professionallarni qahvaxonada "
-        "uchrashtiruvchi xizmat.\n\n"
-        "📌 *Qanday ishlaydi:*\n"
-        "1️⃣ Siz bilan qisqa suhbat — kim ekanlgingizni bilib olaman\n"
-        "2️⃣ Sizga mos 3 kishini tanlayman\n"
-        "3️⃣ To'lov qilasiz (99,000 UZS)\n"
-        "4️⃣ Chorshanba kuni qahvaxonada uchrashuvga kelasiz!\n\n"
-        "🎯 *Maqsad:* kerakli odamlar bilan tanishish — sherik, mijoz, "
-        "mentor, do'st. Barchasi bitta stol atrofida.\n\n"
-        "Har hafta, har chorshanba, soat 20:00 da. ☕",
-        parse_mode="Markdown",
+        "Teahouse — Toshkentdagi tadbirkorlar va mutaxassislarni qahvaxonada "
+        "bitta stol atrofida uchrashtiruvchi xizmat.\n\n"
+        "Qanday ishlaydi:\n"
+        "1. Ikki bosqichli anketani to'ldirasiz (o'zingiz va sizga kerakli sheriklar haqida)\n"
+        "2. Sun'iy intellekt sizga mos 3 nafar suhbatdoshni tanlaydi\n"
+        "3. Uchrashuv joyi band qilinadi (99,000 UZS)\n"
+        "4. Chorshanba kuni soat 20:00 da shinam qahvaxonada uchrashuv bo'lib o'tadi.\n\n"
+        "Maqsad: o'zaro manfaatli va professional networking muhitini yaratish.\n\n"
+        "Har hafta, har chorshanba, soat 20:00 da.",
         reply_markup=start_keyboard(),
     )
 
@@ -132,7 +115,6 @@ async def _get_or_create_user(
 
         logger.info(f"New user created: {user}")
     else:
-        # Update username/name if changed
         user.username = message.from_user.username
         user.first_name = message.from_user.first_name or user.first_name
         logger.info(f"Returning user: {user}")
@@ -142,28 +124,25 @@ async def _get_or_create_user(
 
 async def _send_welcome(message: Message, first_name: str, has_profile: bool):
     """Send welcome message based on user state."""
-    # Doimiy pastki menyuni ochamiz
     await message.answer(
-        "👋 Xush kelibsiz! Pastdagi qulay menyudan foydalanishingiz mumkin:",
+        "Xush kelibsiz. Asosiy menyudan foydalanishingiz mumkin:",
         reply_markup=main_menu_keyboard(),
     )
 
     if has_profile:
         await message.answer(
-            f"Qaytganingizdan xursandman, {first_name}! 👋\n\n"
-            f"Profilingiz tayyor va matching pool'da faol. "
-            f"Keyingi uchrashuv uchun kutib turamiz. ☕",
+            f"Assalomu alaykum, {first_name}.\n\n"
+            "Sizning profilingiz faol holatda. "
+            "Navbatdagi uchrashuv uchun taklif kutishingiz mumkin.",
             reply_markup=start_keyboard(),
         )
     else:
         await message.answer(
-            f"Salom, {first_name}! 👋\n\n"
-            f"Men *Teahouse* — Toshkentdagi professionallarni qahvaxonada "
-            f"uchrashtiruvchi botman.\n\n"
-            f"Sizni 3 ta o'zingizga mos va qiziqarli mutaxassis bilan tanishtirishim mumkin. "
-            f"Buning uchun faqat 3-5 daqiqa suhbat kerak.\n\n"
-            f"💡 Savollarga matn yoki 🎤 ovozli xabar bilan javob berishingiz mumkin.\n\n"
-            f"Boshlaymizmi? ☕",
+            f"Assalomu alaykum, {first_name}.\n\n"
+            "Teahouse — Toshkentdagi professional networking xizmati.\n\n"
+            "Sizga mos 3 nafar qiziqarli va foydali mutaxassis bilan tanishish uchun "
+            "ikki bosqichli qisqa anketani to'ldiring.\n\n"
+            "Savollarga matn yoki ovozli xabar ko'rinishida javob berishingiz mumkin.\n\n"
+            "Boshlash uchun pastdagi tugmani bosing:",
             reply_markup=start_keyboard(),
-            parse_mode="Markdown",
         )

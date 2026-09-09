@@ -2,25 +2,34 @@ from aiogram.fsm.state import State, StatesGroup
 
 
 class InterviewStates(StatesGroup):
-    """FSM states for the onboarding interview flow."""
+    """FSM states for the two-stage onboarding flow."""
 
-    # Waiting for bot to introduce itself
-    greeting = State()
+    # 1-Bosqich: Ro'yxatdan o'tish va o'zi haqida ma'lumot
+    stage1_full_name = State()       # Ism va familiya
+    stage1_phone = State()           # Telefon raqam
+    stage1_role = State()            # Kasb va lavozim
+    stage1_company = State()         # Kompaniya / Loyiha
+    stage1_industry = State()        # Faoliyat sohasi
+    stage1_seniority = State()       # Tajriba darajasi
+    stage1_age = State()             # Yoshi
 
-    # Core interview questions
-    asking_role = State()          # What do you do? Role, company, industry
-    followup_role = State()        # Follow-up if answer was vague
-    asking_goal = State()          # What are you trying to achieve right now?
-    followup_goal = State()        # Follow-up if answer was thin
-    asking_offer = State()         # What can you offer others?
-    followup_offer = State()       # Follow-up if answer was thin
-    asking_seniority = State()     # Experience level
-    asking_age = State()           # Age
-    asking_interests = State()     # Interests outside work
+    # 2-Bosqich: Qidirilayotgan sheriklar va uchrashuv talablari
+    stage2_partner_goal = State()    # Sherikdan ko'zlangan maqsad
+    stage2_target_industry = State() # Qaysi soha vakillari kerak
+    stage2_offer = State()           # Bo'lajak sheriklarga o'zining taklifi
+    stage2_expectations = State()    # Uchrashuvdan kutilma
 
-    # Confirmation
-    confirming_profile = State()   # Review and confirm
-    completed = State()            # Interview done
+    # Yakuniy ko'rib chiqish va tasdiqlash
+    confirming_profile = State()
+    completed = State()
+
+    # Moslik uchun eski nomlar
+    asking_role = stage1_role
+    asking_goal = stage2_partner_goal
+    asking_offer = stage2_offer
+    asking_seniority = stage1_seniority
+    asking_age = stage1_age
+    asking_interests = stage2_expectations
 
 
 class OfferStates(StatesGroup):

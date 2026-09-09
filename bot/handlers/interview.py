@@ -1,19 +1,17 @@
-"""Interview handler — adaptive conversational interview flow.
+"""Two-stage onboarding and interview handler.
 
-The interview is conversational and adaptive: a vague or thin answer gets
-a follow-up rather than being accepted. It must read like a curious friend
-who is good at asking questions, not a form.
+Stage 1: Ro'yxatdan o'tish va shaxsiy/professional ma'lumotlar (ism, telefon, kasb, kompaniya, soha, tajriba, yosh)
+Stage 2: Qidirilayotgan sheriklar va uchrashuv mezonlari (maqsad, qaysi soha vakillari kerak, o'zining taklifi)
 
-Hard constraint: the whole interview finishes in about five minutes.
-Cap total turns.
+Barcha matnlar va tugmalar rasmiy, professional hamda EMOJILARSIZ.
 """
 
-import json
 import logging
+import re
 from typing import Optional
 
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 
 from sqlalchemy import select
@@ -23,149 +21,224 @@ from db.session import async_session
 from db.models import User, Profile, InterviewSession, InterviewAnswer
 from bot.states.interview import InterviewStates
 from bot.keyboards.inline import (
+    industry_keyboard,
     seniority_keyboard,
     age_range_keyboard,
+    partner_goal_keyboard,
+    target_industry_keyboard,
     confirm_keyboard,
 )
-from bot.services.llm import chat_interview, extract_profile
+from bot.keyboards.reply import phone_request_keyboard, main_menu_keyboard
+from bot.services.llm import extract_profile
 from bot.services.stt import transcribe_voice
 from bot.services.notifications import send_typing
 
 logger = logging.getLogger(__name__)
 router = Router(name="interview")
 
-MAX_TURNS = 12  # Hard cap on total conversation turns
+
+# ─── Boshlash ───
+
+@router.callback_query(F.data == "start_interview")
+async def start_interview_callback(callback: CallbackQuery, state: FSMContext):
+    """Intervyuni inline tugma orqali boshlash."""
+    await callback.answer()
+    await _begin_stage1(callback.message, state, callback.from_user.first_name)
 
 
-@router.message(InterviewStates.asking_role, F.text | F.voice)
-async def handle_role_answer(message: Message, state: FSMContext):
-    """Handle the role/work question answer (text or voice)."""
-    answer = await _extract_answer(message)
-    if not answer:
+@router.message(F.text.in_(["Anketa / Ro'yxatdan o'tish", "☕ Suhbat / Intervyu", "Ro'yxatdan o'tish"]))
+async def start_interview_message(message: Message, state: FSMContext):
+    """Intervyuni menyu orqali boshlash."""
+    await _begin_stage1(message, state, message.from_user.first_name)
+
+
+async def _begin_stage1(message: Message, state: FSMContext, default_name: str = ""):
+    """1-bosqichni boshlash."""
+    await state.clear()
+    await state.set_state(InterviewStates.stage1_full_name)
+
+    intro_text = (
+        "Teahouse professional uchrashuvlar tizimi.\n\n"
+        "Ro'yxatdan o'tish 2 bosqichdan iborat:\n"
+        "1-bosqich: O'zingiz haqingizda to'liq professional ma'lumotlar\n"
+        "2-bosqich: Sizga qanday sheriklar yoki suhbatdoshlar kerakligi\n\n"
+        "1-BOSQICH: SHAXSIY VA KASBIY MA'LUMOTLAR\n\n"
+        "To'liq ism va familiyangizni kiriting (masalan: Alisher Qodirov):"
+    )
+
+    if hasattr(message, "edit_text"):
+        try:
+            await message.edit_text(intro_text)
+            return
+        except Exception:
+            pass
+    await message.answer(intro_text)
+
+
+# ─── 1-BOSQICH: SHAXSIY VA KASBIY MA'LUMOTLAR ───
+
+@router.message(InterviewStates.stage1_full_name, F.text | F.voice)
+async def handle_full_name(message: Message, state: FSMContext):
+    """Ism va familiyani qabul qilish."""
+    full_name = await _extract_answer(message)
+    if not full_name or len(full_name.strip()) < 2:
+        await message.answer("Iltimos, ism va familiyangizni to'liq kiriting:")
         return
 
-    data = await state.get_data()
-    conversation = data.get("conversation", [])
-    turn = data.get("turn", 0)
+    full_name = full_name.strip()
+    await state.update_data(full_name=full_name)
+    await state.set_state(InterviewStates.stage1_phone)
 
-    conversation.append({"role": "user", "content": answer})
-
-    # Save to DB
-    await _save_answer(message.from_user.id, "role", answer, message, turn)
-
-    # Ask LLM for next response
-    await send_typing(message.chat.id)
-    llm_response = await chat_interview(conversation)
-    conversation.append({"role": "assistant", "content": llm_response})
-
-    turn += 1
-    await state.update_data(conversation=conversation, turn=turn)
-
-    if turn >= 2:
-        # Move to asking about goals
-        await state.set_state(InterviewStates.asking_goal)
-
-    await message.answer(llm_response)
+    await message.answer(
+        f"Rahmat, {full_name}.\n\n"
+        "Endi telefon raqamingizni tasdiqlang.\n"
+        "Pastdagi tugmani bosing yoki raqamingizni xalqaro formatda yozing (+998901234567):",
+        reply_markup=phone_request_keyboard(),
+    )
 
 
-@router.message(InterviewStates.asking_goal, F.text | F.voice)
-async def handle_goal_answer(message: Message, state: FSMContext):
-    """Handle the 'what are you trying to achieve' answer."""
-    answer = await _extract_answer(message)
-    if not answer:
+@router.message(InterviewStates.stage1_phone, F.contact | F.text)
+async def handle_phone(message: Message, state: FSMContext):
+    """Telefon raqamini qabul qilish (kontakt yoki matn)."""
+    phone = ""
+    if message.contact:
+        phone = message.contact.phone_number
+    elif message.text:
+        raw = message.text.strip()
+        if raw == "Bekor qilish":
+            await state.clear()
+            await message.answer("Ro'yxatdan o'tish bekor qilindi.", reply_markup=main_menu_keyboard())
+            return
+        # Raqamni tekshirish
+        digits = re.sub(r"[^\d+]", "", raw)
+        if len(digits) >= 9:
+            phone = digits
+        else:
+            await message.answer(
+                "Telefon raqam noto'g'ri kiritildi. Iltimos, pastdagi tugmani bosing yoki raqamni to'liq yozing:",
+                reply_markup=phone_request_keyboard(),
+            )
+            return
+
+    if not phone.startswith("+"):
+        phone = "+" + phone
+
+    await state.update_data(phone=phone)
+    await state.set_state(InterviewStates.stage1_role)
+
+    await message.answer(
+        f"Telefon raqamingiz qabul qilindi: {phone}\n\n"
+        "Asosiy kasbingiz va lavozimingiz nima?\n"
+        "(Masalan: Senior Backend dasturchi, Savdo bo'limi rahbari, Biznes asoschisi, Moliya direktori):",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+
+@router.message(InterviewStates.stage1_role, F.text | F.voice)
+async def handle_role(message: Message, state: FSMContext):
+    """Kasb va lavozimni qabul qilish."""
+    role = await _extract_answer(message)
+    if not role or len(role.strip()) < 2:
+        await message.answer("Iltimos, kasbingiz yoki lavozimingizni kiriting:")
         return
 
-    data = await state.get_data()
-    conversation = data.get("conversation", [])
-    turn = data.get("turn", 0)
+    await state.update_data(role=role.strip())
+    await state.set_state(InterviewStates.stage1_company)
 
-    conversation.append({"role": "user", "content": answer})
-    await _save_answer(message.from_user.id, "goal", answer, message, turn)
-
-    await send_typing(message.chat.id)
-    llm_response = await chat_interview(conversation)
-    conversation.append({"role": "assistant", "content": llm_response})
-
-    turn += 1
-    await state.update_data(conversation=conversation, turn=turn)
-
-    if turn >= 4:
-        await state.set_state(InterviewStates.asking_offer)
-
-    await message.answer(llm_response)
+    await message.answer(
+        "Qaysi kompaniya, korxona yoki loyihada faoliyat yuritasiz?\n"
+        "(Agar shaxsiy biznesingiz yoki startapingiz bo'lsa, uning nomini yozing):"
+    )
 
 
-@router.message(InterviewStates.asking_offer, F.text | F.voice)
-async def handle_offer_answer(message: Message, state: FSMContext):
-    """Handle the 'what can you offer others' answer."""
-    answer = await _extract_answer(message)
-    if not answer:
+@router.message(InterviewStates.stage1_company, F.text | F.voice)
+async def handle_company(message: Message, state: FSMContext):
+    """Kompaniya yoki loyiha nomini qabul qilish."""
+    company = await _extract_answer(message)
+    if not company:
+        await message.answer("Iltimos, kompaniya yoki loyihangiz nomini kiriting:")
         return
 
-    data = await state.get_data()
-    conversation = data.get("conversation", [])
-    turn = data.get("turn", 0)
+    await state.update_data(company=company.strip())
+    await state.set_state(InterviewStates.stage1_industry)
 
-    conversation.append({"role": "user", "content": answer})
-    await _save_answer(message.from_user.id, "offer", answer, message, turn)
+    await message.answer(
+        "Faoliyat sohangizni tanlang:",
+        reply_markup=industry_keyboard(),
+    )
 
-    await send_typing(message.chat.id)
-    llm_response = await chat_interview(conversation)
-    conversation.append({"role": "assistant", "content": llm_response})
 
-    turn += 1
-    await state.update_data(conversation=conversation, turn=turn)
+@router.callback_query(InterviewStates.stage1_industry, F.data.startswith("ind_"))
+async def handle_industry_callback(callback: CallbackQuery, state: FSMContext):
+    """Sohani inline tugma orqali tanlash."""
+    await callback.answer()
 
-    if turn >= 6:
-        # Switch to button-based seniority question
-        await state.set_state(InterviewStates.asking_seniority)
-        await message.answer(
-            f"{llm_response}\n\n"
-            "Endi tajriba darajangizni tanlang 👇",
-            reply_markup=seniority_keyboard(),
-        )
+    industry_map = {
+        "ind_it": "Axborot texnologiyalari (IT)",
+        "ind_finance": "Moliya, bank va investitsiya",
+        "ind_retail": "Savdo, riteyl va xizmatlar",
+        "ind_marketing": "Marketing, PR va reklama",
+        "ind_production": "Ishlab chiqarish va sanoat",
+        "ind_construction": "Qurilish va ko'chmas mulk",
+        "ind_education": "Ta'lim va konsalting",
+        "ind_medicine": "Tibbiyot va farmatsevtika",
+    }
+
+    if callback.data == "ind_other":
+        await callback.message.edit_text("Faoliyat sohangizni yozib yuboring:")
         return
 
-    await message.answer(llm_response)
+    industry = industry_map.get(callback.data, "Boshqa soha")
+    await state.update_data(industry=industry)
+    await state.set_state(InterviewStates.stage1_seniority)
+
+    await callback.message.edit_text(
+        f"Soha: {industry}\n\n"
+        "Ushbu sohada qancha tajribaga egasiz? Darajangizni tanlang:",
+        reply_markup=seniority_keyboard(),
+    )
 
 
-@router.callback_query(InterviewStates.asking_seniority, F.data.startswith("seniority_"))
-async def handle_seniority(callback: CallbackQuery, state: FSMContext):
-    """Handle seniority button selection."""
+@router.message(InterviewStates.stage1_industry, F.text)
+async def handle_industry_text(message: Message, state: FSMContext):
+    """Sohani qo'lda yozganda qabul qilish."""
+    industry = message.text.strip()
+    await state.update_data(industry=industry)
+    await state.set_state(InterviewStates.stage1_seniority)
+
+    await message.answer(
+        f"Soha: {industry}\n\n"
+        "Ushbu sohada qancha tajribaga egasiz? Darajangizni tanlang:",
+        reply_markup=seniority_keyboard(),
+    )
+
+
+@router.callback_query(InterviewStates.stage1_seniority, F.data.startswith("seniority_"))
+async def handle_seniority_callback(callback: CallbackQuery, state: FSMContext):
+    """Tajriba darajasini tanlash."""
     await callback.answer()
 
     seniority_map = {
-        "seniority_junior": ("junior", 1),
-        "seniority_mid": ("mid", 4),
-        "seniority_senior": ("senior", 8),
-        "seniority_founder": ("founder", 12),
+        "seniority_junior": ("Boshlang'ich", 1),
+        "seniority_mid": ("O'rta mutaxassis", 4),
+        "seniority_senior": ("Katta mutaxassis", 8),
+        "seniority_founder": ("Rahbar / Biznes asoschisi", 12),
     }
 
-    seniority, default_years = seniority_map.get(callback.data, ("mid", 4))
+    seniority_title, default_years = seniority_map.get(callback.data, ("O'rta mutaxassis", 4))
+    await state.update_data(seniority=seniority_title, experience_years=default_years)
+    await state.set_state(InterviewStates.stage1_age)
 
-    data = await state.get_data()
-    conversation = data.get("conversation", [])
-    turn = data.get("turn", 0)
-
-    conversation.append({"role": "user", "content": f"Tajriba: {seniority}, taxminan {default_years} yil"})
-
-    await state.update_data(
-        conversation=conversation,
-        turn=turn + 1,
-        seniority=seniority,
-        experience_years=default_years,
-    )
-
-    await state.set_state(InterviewStates.asking_age)
     await callback.message.edit_text(
-        "👍 Yaxshi! Yoshingizni tanlang:",
+        f"Tajriba: {seniority_title}\n\n"
+        "Yoshingizni tanlang:",
         reply_markup=age_range_keyboard(),
     )
 
 
-@router.callback_query(InterviewStates.asking_age, F.data.startswith("age_"))
-async def handle_age(callback: CallbackQuery, state: FSMContext):
-    """Handle age range button selection."""
+@router.callback_query(InterviewStates.stage1_age, F.data.startswith("age_"))
+async def handle_age_callback(callback: CallbackQuery, state: FSMContext):
+    """Yoshni tanlash va 2-bosqichga o'tish."""
     await callback.answer()
 
     age_map = {
@@ -177,220 +250,302 @@ async def handle_age(callback: CallbackQuery, state: FSMContext):
         "age_50_plus": 55,
     }
 
-    age = age_map.get(callback.data, 30)
+    age = age_map.get(callback.data, 28)
+    await state.update_data(age=age)
 
-    data = await state.get_data()
-    conversation = data.get("conversation", [])
+    # 1-bosqich yakunlandi, 2-bosqich boshlanadi
+    await state.set_state(InterviewStates.stage2_partner_goal)
 
-    conversation.append({"role": "user", "content": f"Yoshim: {age}"})
-    await state.update_data(conversation=conversation, age=age)
-
-    await state.set_state(InterviewStates.asking_interests)
     await callback.message.edit_text(
-        "Zo'r! Oxirgi savol — ishdan tashqari nimalar qiziqtiradi?\n\n"
-        "Sport, kitob, sayohat, musiqa — har narsa bo'lishi mumkin 😊"
+        "1-bosqich yakunlandi. Shaxsiy va kasbiy ma'lumotlaringiz qabul qilindi.\n\n"
+        "2-BOSQICH: SIZGA QANDAY SHERIKLAR KERAKLIGI\n\n"
+        "Teahouse uchrashuvlarida qanday maqsadda sherik yoki suhbatdosh qidiryapsiz?\n"
+        "Asosiy maqsadingizni tanlang:",
+        reply_markup=partner_goal_keyboard(),
     )
 
 
-@router.message(InterviewStates.asking_interests, F.text | F.voice)
-async def handle_interests(message: Message, state: FSMContext):
-    """Handle interests answer — last question before profile generation."""
-    answer = await _extract_answer(message)
-    if not answer:
+# ─── 2-BOSQICH: QIDIRILAYOTGAN SHERIKLAR VA TALABLAR ───
+
+@router.callback_query(InterviewStates.stage2_partner_goal, F.data.startswith("goal_"))
+async def handle_goal_callback(callback: CallbackQuery, state: FSMContext):
+    """Sheriklik maqsadini tanlash."""
+    await callback.answer()
+
+    goal_map = {
+        "goal_cofounder": "Biznes hamkor / Hammuassis",
+        "goal_investor": "Investor / Moliyalashtirish",
+        "goal_clients": "Mijozlar va buyurtmachilar topish",
+        "goal_team": "Malakali mutaxassis / Jamoa yig'ish",
+        "goal_mentor": "Mentor / Maslahatchi",
+        "goal_networking": "Tajriba almashish va professional networking",
+    }
+
+    goal = goal_map.get(callback.data, "Tajriba almashish")
+    await state.update_data(target_partner=goal, current_goal=goal)
+    await state.set_state(InterviewStates.stage2_target_industry)
+
+    await callback.message.edit_text(
+        f"Maqsad: {goal}\n\n"
+        "Aynan qaysi soha vakillari yoki mutaxassislari bilan uchrashish siz uchun eng foydali va qiziq?",
+        reply_markup=target_industry_keyboard(),
+    )
+
+
+@router.message(InterviewStates.stage2_partner_goal, F.text | F.voice)
+async def handle_goal_text(message: Message, state: FSMContext):
+    """Sheriklik maqsadini yozma qabul qilish."""
+    goal = await _extract_answer(message)
+    if not goal:
+        await message.answer("Iltimos, maqsadingizni tanlang yoki yozing:")
         return
 
-    data = await state.get_data()
-    conversation = data.get("conversation", [])
+    await state.update_data(target_partner=goal.strip(), current_goal=goal.strip())
+    await state.set_state(InterviewStates.stage2_target_industry)
 
-    conversation.append({"role": "user", "content": f"Qiziqishlarim: {answer}"})
-    await state.update_data(conversation=conversation, interests=answer)
+    await message.answer(
+        f"Maqsad: {goal.strip()}\n\n"
+        "Aynan qaysi soha vakillari yoki mutaxassislari bilan uchrashish siz uchun eng foydali va qiziq?",
+        reply_markup=target_industry_keyboard(),
+    )
 
+
+@router.callback_query(InterviewStates.stage2_target_industry, F.data.startswith("tgt_"))
+async def handle_target_industry_callback(callback: CallbackQuery, state: FSMContext):
+    """Izlanayotgan sohani tanlash."""
+    await callback.answer()
+
+    tgt_map = {
+        "tgt_all": "Barcha soha vakillari bilan",
+        "tgt_it": "Axborot texnologiyalari (IT)",
+        "tgt_business": "Biznes, savdo va investitsiya",
+        "tgt_marketing": "Marketing va savdo mutaxassislari",
+        "tgt_industry": "Ishlab chiqarish va xizmat ko'rsatish",
+    }
+
+    if callback.data == "tgt_other":
+        await callback.message.edit_text("Qaysi soha vakillari bilan uchrashmoqchi ekanligingizni yozib yuboring:")
+        return
+
+    target_ind = tgt_map.get(callback.data, "Barcha sohalar")
+    await state.update_data(target_industry=target_ind)
+    await state.set_state(InterviewStates.stage2_offer)
+
+    await callback.message.edit_text(
+        f"Izlanayotgan soha: {target_ind}\n\n"
+        "O'zingiz bo'lajak suhbatdoshlarga qanday yordam, tajriba yoki xizmat taklif eta olasiz?\n"
+        "(Sizning eng kuchli tomoningiz yoki berishingiz mumkin bo'lgan foyda nima?):"
+    )
+
+
+@router.message(InterviewStates.stage2_target_industry, F.text)
+async def handle_target_industry_text(message: Message, state: FSMContext):
+    """Izlanayotgan sohani yozma qabul qilish."""
+    target_ind = message.text.strip()
+    await state.update_data(target_industry=target_ind)
+    await state.set_state(InterviewStates.stage2_offer)
+
+    await message.answer(
+        f"Izlanayotgan soha: {target_ind}\n\n"
+        "O'zingiz bo'lajak suhbatdoshlarga qanday yordam, tajriba yoki xizmat taklif eta olasiz?\n"
+        "(Sizning eng kuchli tomoningiz yoki berishingiz mumkin bo'lgan foyda nima?):"
+    )
+
+
+@router.message(InterviewStates.stage2_offer, F.text | F.voice)
+async def handle_offer(message: Message, state: FSMContext):
+    """Foydalanuvchining o'z taklifini qabul qilish."""
+    offer = await _extract_answer(message)
+    if not offer:
+        await message.answer("Iltimos, boshqalarga nima bera olishingizni yozib yuboring:")
+        return
+
+    await state.update_data(can_offer=offer.strip())
+    await state.set_state(InterviewStates.stage2_expectations)
+
+    await message.answer(
+        "Oxirgi savol: Uchrashuvda qanday mavzular yoki masalalarni muhokama qilishni xohlardingiz?\n"
+        "(Qisqa tarzda yozing yoki ovozli xabar yuboring):"
+    )
+
+
+@router.message(InterviewStates.stage2_expectations, F.text | F.voice)
+async def handle_expectations(message: Message, state: FSMContext):
+    """Kutilayotgan mavzularni qabul qilish va yakuniy xulosani ko'rsatish."""
+    expectations = await _extract_answer(message)
+    if not expectations:
+        expectations = "Professional tajriba almashish va yangi tanishuvlar"
+
+    await state.update_data(interests=expectations.strip())
     await send_typing(message.chat.id)
 
-    # Generate profile from conversation
-    full_conversation = "\n".join(
-        f"{'Foydalanuvchi' if m['role'] == 'user' else 'Bot'}: {m['content']}"
-        for m in conversation
+    data = await state.get_data()
+
+    # AI orqali qisqa professional xulosa yaratish
+    prompt = (
+        f"Foydalanuvchi ma'lumotlari:\n"
+        f"Ism: {data.get('full_name')}\n"
+        f"Kasb: {data.get('role')}\n"
+        f"Kompaniya: {data.get('company')}\n"
+        f"Soha: {data.get('industry')}\n"
+        f"Tajriba: {data.get('seniority')} ({data.get('experience_years')} yil)\n"
+        f"Sheriklik maqsadi: {data.get('target_partner')}\n"
+        f"Izlanayotgan soha: {data.get('target_industry')}\n"
+        f"Taklifi: {data.get('can_offer')}\n"
+        f"Mavzular: {expectations}\n"
     )
 
+    bio_summary = ""
     try:
-        profile_data = await extract_profile(full_conversation)
+        extracted = await extract_profile(prompt)
+        bio_summary = extracted.get("bio_summary", "")
     except Exception as e:
-        logger.error(f"Profile extraction failed: {e}")
-        profile_data = {}
+        logger.error(f"Bio extraction error: {e}")
 
-    # Override with button-selected values
-    profile_data["seniority"] = data.get("seniority", profile_data.get("seniority", "mid"))
-    profile_data["experience_years"] = data.get("experience_years", profile_data.get("experience_years", 0))
-    profile_data["age"] = data.get("age", profile_data.get("age", 0))
-    profile_data["interests"] = answer
+    if not bio_summary:
+        bio_summary = (
+            f"{data.get('company')} kompaniyasida {data.get('role')} bo'lib faoliyat yuritadi. "
+            f"{data.get('target_partner')} maqsadida uchrashuvlarga qatnashadi."
+        )
 
-    await state.update_data(profile_data=profile_data)
+    await state.update_data(bio_summary=bio_summary)
     await state.set_state(InterviewStates.confirming_profile)
 
-    # Show profile summary for confirmation
-    summary = (
-        f"📋 *Sizning profilingiz:*\n\n"
-        f"💼 *Kasb:* {profile_data.get('role', '—')}\n"
-        f"🏢 *Kompaniya:* {profile_data.get('company', '—')}\n"
-        f"🏭 *Soha:* {profile_data.get('industry', '—')}\n"
-        f"🎯 *Maqsad:* {profile_data.get('current_goal', '—')}\n"
-        f"🤝 *Taklif:* {profile_data.get('can_offer', '—')}\n"
-        f"📊 *Tajriba:* {profile_data.get('seniority', '—')} ({profile_data.get('experience_years', 0)} yil)\n"
-        f"🎂 *Yosh:* {profile_data.get('age', '—')}\n"
-        f"🎮 *Qiziqish:* {profile_data.get('interests', '—')}\n\n"
-        f"📝 _{profile_data.get('bio_summary', '')}_"
+    # Yakuniy rasmiy ko'rik (emojilarsiz)
+    summary_text = (
+        "ANKETA TO'LDIRILDI\n"
+        "Kiritilgan ma'lumotlarni tekshiring:\n\n"
+        "1-BOSQICH: SHAXSIY VA KASBIY MA'LUMOTLAR\n"
+        f"- To'liq ism: {data.get('full_name')}\n"
+        f"- Telefon: {data.get('phone')}\n"
+        f"- Kasb va lavozim: {data.get('role')}\n"
+        f"- Kompaniya / Loyiha: {data.get('company')}\n"
+        f"- Faoliyat sohasi: {data.get('industry')}\n"
+        f"- Tajriba: {data.get('seniority')} ({data.get('experience_years')} yil)\n"
+        f"- Yosh: {data.get('age')}\n\n"
+        "2-BOSQICH: QIDIRILAYOTGAN SHERIKLAR VA MEZONLAR\n"
+        f"- Sheriklik maqsadi: {data.get('target_partner')}\n"
+        f"- Qidirilayotgan soha: {data.get('target_industry')}\n"
+        f"- Sizning taklifingiz: {data.get('can_offer')}\n"
+        f"- Muhokama mavzulari: {data.get('interests')}\n\n"
+        f"Xulosa:\n{bio_summary}\n\n"
+        "Barcha ma'lumotlar to'g'ri bo'lsa, tasdiqlang:"
     )
 
-    await message.answer(summary, parse_mode="Markdown", reply_markup=confirm_keyboard())
+    await message.answer(summary_text, reply_markup=confirm_keyboard())
 
+
+# ─── TASDIQLASH VA SAQLASH ───
 
 @router.callback_query(InterviewStates.confirming_profile, F.data == "confirm_profile")
 async def confirm_profile(callback: CallbackQuery, state: FSMContext):
-    """User confirmed their profile — save to database."""
-    await callback.answer("✅ Profil saqlandi!")
+    """Anketani tasdiqlash va bazaga saqlash."""
+    await callback.answer("Ma'lumotlar saqlandi.")
 
     data = await state.get_data()
-    profile_data = data.get("profile_data", {})
 
     async with async_session() as session:
-        # Get user
+        # Foydalanuvchini olish yoki yangilash
         result = await session.execute(
             select(User).where(User.telegram_id == callback.from_user.id)
         )
         user = result.scalar_one_or_none()
-        if not user:
-            await callback.message.edit_text("❌ Xatolik yuz berdi. /start buyrug'ini qayta yuboring.")
-            return
 
-        # Create or update profile
-        result = await session.execute(
+        if not user:
+            user = User(
+                telegram_id=callback.from_user.id,
+                first_name=data.get("full_name", callback.from_user.first_name),
+                username=callback.from_user.username,
+                phone=data.get("phone"),
+            )
+            session.add(user)
+            await session.flush()
+        else:
+            if data.get("full_name"):
+                user.first_name = data.get("full_name")
+            if data.get("phone"):
+                user.phone = data.get("phone")
+
+        # Profilni olish yoki yaratish
+        res_prof = await session.execute(
             select(Profile).where(Profile.user_id == user.id)
         )
-        profile = result.scalar_one_or_none()
+        profile = res_prof.scalar_one_or_none()
 
         if profile is None:
             profile = Profile(user_id=user.id)
             session.add(profile)
 
-        profile.role = profile_data.get("role")
-        profile.company = profile_data.get("company")
-        profile.industry = profile_data.get("industry")
-        profile.stage = profile_data.get("stage")
-        profile.current_goal = profile_data.get("current_goal")
-        profile.can_offer = profile_data.get("can_offer")
-        profile.seniority = profile_data.get("seniority")
-        profile.experience_years = profile_data.get("experience_years")
-        profile.age = profile_data.get("age")
-        profile.interests = profile_data.get("interests")
-        profile.bio_summary = profile_data.get("bio_summary")
+        profile.role = data.get("role")
+        profile.company = data.get("company")
+        profile.industry = data.get("industry")
+        profile.current_goal = data.get("current_goal")
+        profile.target_partner = data.get("target_partner")
+        profile.target_industry = data.get("target_industry")
+        profile.can_offer = data.get("can_offer")
+        profile.seniority = data.get("seniority")
+        profile.experience_years = data.get("experience_years")
+        profile.age = data.get("age")
+        profile.interests = data.get("interests")
+        profile.bio_summary = data.get("bio_summary")
 
-        # Complete interview session
-        interview = InterviewSession(
+        # Intervyu sessiyasini belgilash
+        session_record = InterviewSession(
             user_id=user.id,
             status="completed",
-            total_turns=data.get("turn", 0),
+            total_turns=10,
         )
-        session.add(interview)
+        session.add(session_record)
 
         await session.commit()
 
     await state.clear()
-    await callback.message.edit_text(
-        "🎉 Ajoyib! Profilingiz saqlandi.\n\n"
-        "Endi siz matching pool'ga qo'shildingiz. Yetarli odamlar yig'ilganda, "
-        "sizga uchrashuv taklifi yuboriladi.\n\n"
-        "Kutib turing — tez orada xabar beramiz! ☕"
+
+    success_text = (
+        "Anketa muvaffaqiyatli saqlandi.\n\n"
+        "Siz Teahouse professional uchrashuvlar tizimida ro'yxatdan o'tdingiz.\n"
+        "Sizning sohangiz va mezonlaringizga mos sheriklar shakllanganda, "
+        "navbatdagi chorshanba uchrashuvi uchun taklifnoma yuboriladi.\n\n"
+        "Profilingizni ko'rish yoki yangilash uchun quyidagi menyudan foydalanishingiz mumkin."
     )
+
+    try:
+        await callback.message.edit_text(success_text)
+    except Exception:
+        await callback.message.answer(success_text)
+
+    await callback.message.answer("Asosiy menyu:", reply_markup=main_menu_keyboard())
 
 
 @router.callback_query(InterviewStates.confirming_profile, F.data == "redo_interview")
 async def redo_interview(callback: CallbackQuery, state: FSMContext):
-    """User wants to redo the interview."""
+    """Anketani qaytadan boshlash."""
     await callback.answer()
-    await state.clear()
-    await state.set_state(InterviewStates.asking_role)
-
-    await callback.message.edit_text(
-        "Xo'p, qaytadan boshlaylik! 😊\n\n"
-        "Siz nima ish qilasiz? Kasbingiz, kompaniyangiz yoki loyihangiz haqida gapirib bering.\n\n"
-        "💡 Yozib yoki 🎤 ovozli xabar yuborishingiz mumkin.",
-    )
+    await _begin_stage1(callback.message, state, callback.from_user.first_name)
 
 
-# ─── Helpers ───
-
+# ─── Yordamchi funksiyalar ───
 
 async def _extract_answer(message: Message) -> Optional[str]:
-    """Extract text from a message (text or voice)."""
+    """Xabardan matnni ajratib olish (yozma yoki ovozli)."""
     if message.voice:
         try:
-            # Download voice file
             bot: Bot = message.bot
             file = await bot.get_file(message.voice.file_id)
             voice_bytes = await bot.download_file(file.file_path)
             voice_data = voice_bytes.read()
 
-            # Transcribe
             text = await transcribe_voice(voice_data)
             if text:
-                # Send transcription back so user sees what was understood
-                await message.reply(f"🎤 _{text}_", parse_mode="Markdown")
+                await message.reply(f"Ovozli xabar matni: {text}")
                 return text
             else:
-                await message.reply("Kechirasiz, ovozingizni tushunolmadim. Qayta urinib ko'ring yoki yozib yuboring.")
+                await message.reply("Ovozli xabar aniqlanmadi. Iltimos, qayta yuboring yoki yozma kiriting.")
                 return None
         except Exception as e:
-            logger.error(f"Voice transcription failed: {e}")
-            await message.reply("Ovozli xabarni qayta ishlashda xatolik. Yozib yuborishingiz mumkin.")
+            logger.error(f"Voice transcription error: {e}")
+            await message.reply("Ovozli xabarni qayta ishlash imkoni bo'lmadi. Iltimos, yozma kiriting.")
             return None
     elif message.text:
         return message.text
     return None
-
-
-async def _save_answer(
-    telegram_id: int,
-    question_key: str,
-    answer: str,
-    message: Message,
-    turn: int,
-):
-    """Save an interview answer to the database."""
-    try:
-        async with async_session() as session:
-            result = await session.execute(
-                select(User).where(User.telegram_id == telegram_id)
-            )
-            user = result.scalar_one_or_none()
-            if not user:
-                return
-
-            # Find or create active session
-            from sqlalchemy import and_
-            result = await session.execute(
-                select(InterviewSession).where(
-                    and_(
-                        InterviewSession.user_id == user.id,
-                        InterviewSession.status == "in_progress",
-                    )
-                )
-            )
-            interview = result.scalar_one_or_none()
-            if not interview:
-                interview = InterviewSession(user_id=user.id)
-                session.add(interview)
-                await session.flush()
-
-            answer_record = InterviewAnswer(
-                session_id=interview.id,
-                question_key=question_key,
-                answer_text=answer,
-                answer_type="voice" if message.voice else "text",
-                turn_number=turn,
-            )
-            session.add(answer_record)
-            interview.total_turns = turn + 1
-            await session.commit()
-    except Exception as e:
-        logger.error(f"Failed to save interview answer: {e}")
