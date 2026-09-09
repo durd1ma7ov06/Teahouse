@@ -476,62 +476,64 @@ async def handle_expectations(message: Message, state: FSMContext):
 @router.callback_query(InterviewStates.confirming_profile, F.data == "confirm_profile")
 async def handle_confirm(callback: CallbackQuery, state: FSMContext):
     """Anketani tasdiqlash va bazaga saqlash."""
-    await callback.answer()
+    await callback.answer("Ma'lumotlar saqlanmoqda...")
     data = await state.get_data()
 
-    async with async_session() as session:
-        res_user = await session.execute(
-            select(User).where(User.telegram_id == callback.from_user.id)
-        )
-        user = res_user.scalar_one_or_none()
-
-        if not user:
-            user = User(
-                telegram_id=callback.from_user.id,
-                username=callback.from_user.username,
-                first_name=data.get("full_name", callback.from_user.first_name),
-                phone=data.get("phone"),
+    try:
+        async with async_session() as session:
+            res_user = await session.execute(
+                select(User).where(User.telegram_id == callback.from_user.id)
             )
-            session.add(user)
-            await session.flush()
-        else:
-            user.first_name = data.get("full_name", user.first_name)
-            if data.get("phone"):
-                user.phone = data.get("phone")
+            user = res_user.scalar_one_or_none()
 
-        res_prof = await session.execute(
-            select(Profile).where(Profile.user_id == user.id)
-        )
-        profile = res_prof.scalar_one_or_none()
+            if not user:
+                user = User(
+                    telegram_id=callback.from_user.id,
+                    username=callback.from_user.username,
+                    first_name=data.get("full_name", callback.from_user.first_name),
+                    phone=data.get("phone"),
+                )
+                session.add(user)
+                await session.flush()
+            else:
+                user.first_name = data.get("full_name", user.first_name)
+                if data.get("phone"):
+                    user.phone = data.get("phone")
 
-        if not profile:
-            profile = Profile(user_id=user.id)
-            session.add(profile)
+            res_prof = await session.execute(
+                select(Profile).where(Profile.user_id == user.id)
+            )
+            profile = res_prof.scalar_one_or_none()
 
-        # Ma'lumotlarni saqlash
-        profile.role = data.get("role")
-        profile.company = data.get("company")
-        profile.industry = data.get("industry")
-        profile.seniority = data.get("seniority")
-        profile.experience_years = data.get("experience_years")
-        profile.age = data.get("age")
-        profile.achievements = data.get("achievements")
-        profile.current_goal = data.get("target_partner")
-        profile.target_partner = data.get("target_partner")
-        profile.target_industry = data.get("target_industry")
-        profile.target_seniority = data.get("target_seniority")
-        profile.can_offer = data.get("can_offer")
-        profile.interests = data.get("interests")
-        profile.bio_summary = data.get("bio_summary")
+            if not profile:
+                profile = Profile(user_id=user.id)
+                session.add(profile)
 
-        # Intervyu sessiyasini yopish
-        session_record = InterviewSession(
-            user_id=user.id,
-            status="completed",
-            total_turns=13,
-        )
-        session.add(session_record)
-        await session.commit()
+            # Ma'lumotlarni to'liq saqlash
+            profile.role = data.get("role")
+            profile.company = data.get("company")
+            profile.industry = data.get("industry")
+            profile.seniority = data.get("seniority")
+            profile.experience_years = data.get("experience_years")
+            profile.age = data.get("age")
+            profile.achievements = data.get("achievements")
+            profile.current_goal = data.get("target_partner")
+            profile.target_partner = data.get("target_partner")
+            profile.target_industry = data.get("target_industry")
+            profile.target_seniority = data.get("target_seniority")
+            profile.can_offer = data.get("can_offer")
+            profile.interests = data.get("interests")
+            profile.bio_summary = data.get("bio_summary") or f"{profile.company}da {profile.role}"
+
+            session_record = InterviewSession(
+                user_id=user.id,
+                status="completed",
+                total_turns=13,
+            )
+            session.add(session_record)
+            await session.commit()
+    except Exception as e:
+        logger.error(f"Tasdiqlashda baza xatosi: {e}")
 
     await state.clear()
 
