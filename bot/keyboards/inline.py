@@ -5,40 +5,40 @@ from bot.config import settings
 def start_keyboard() -> InlineKeyboardMarkup:
     """Boshlash klaviaturasi — faqat ro'yxatdan o'tish tugmasi."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Ro'yxatdan o'tish", callback_data="start_interview")],
+        [InlineKeyboardButton(text="🚀 Ro'yxatdan o'tish", callback_data="start_interview")],
     ])
 
 
 def confirm_keyboard() -> InlineKeyboardMarkup:
     """Anketani tasdiqlash yoki qaytadan boshlash."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Tasdiqlash va saqlash", callback_data="confirm_profile")],
-        [InlineKeyboardButton(text="Qaytadan to'ldirish", callback_data="redo_interview")],
+        [InlineKeyboardButton(text="✅ Tasdiqlash va saqlash", callback_data="confirm_profile")],
+        [InlineKeyboardButton(text="🔄 Qaytadan to'ldirish", callback_data="redo_interview")],
     ])
 
 
 def industry_keyboard() -> InlineKeyboardMarkup:
     """Faoliyat sohalari tanlovi."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Axborot texnologiyalari (IT)", callback_data="ind_it")],
-        [InlineKeyboardButton(text="Moliya, bank va investitsiya", callback_data="ind_finance")],
-        [InlineKeyboardButton(text="Savdo, riteyl va xizmatlar", callback_data="ind_retail")],
-        [InlineKeyboardButton(text="Marketing, PR va reklama", callback_data="ind_marketing")],
-        [InlineKeyboardButton(text="Ishlab chiqarish va sanoat", callback_data="ind_production")],
-        [InlineKeyboardButton(text="Qurilish va ko'chmas mulk", callback_data="ind_construction")],
-        [InlineKeyboardButton(text="Ta'lim va konsalting", callback_data="ind_education")],
-        [InlineKeyboardButton(text="Tibbiyot va farmatsevtika", callback_data="ind_medicine")],
-        [InlineKeyboardButton(text="Boshqa soha (qo'lda kiritaman)", callback_data="ind_other")],
+        [InlineKeyboardButton(text="💻 Axborot texnologiyalari (IT)", callback_data="ind_it")],
+        [InlineKeyboardButton(text="💰 Moliya, bank va investitsiya", callback_data="ind_finance")],
+        [InlineKeyboardButton(text="🛍 Savdo, riteyl va xizmatlar", callback_data="ind_retail")],
+        [InlineKeyboardButton(text="📢 Marketing, PR va reklama", callback_data="ind_marketing")],
+        [InlineKeyboardButton(text="🏭 Ishlab chiqarish va sanoat", callback_data="ind_production")],
+        [InlineKeyboardButton(text="🏗 Qurilish va ko'chmas mulk", callback_data="ind_construction")],
+        [InlineKeyboardButton(text="🎓 Ta'lim va konsalting", callback_data="ind_education")],
+        [InlineKeyboardButton(text="🩺 Tibbiyot va farmatsevtika", callback_data="ind_medicine")],
+        [InlineKeyboardButton(text="🌐 Boshqa soha (qo'lda kiritaman)", callback_data="ind_other")],
     ])
 
 
 def seniority_keyboard() -> InlineKeyboardMarkup:
     """Tajriba darajasini tanlash."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Boshlang'ich (0-2 yil)", callback_data="seniority_junior")],
-        [InlineKeyboardButton(text="O'rta mutaxassis (3-5 yil)", callback_data="seniority_mid")],
-        [InlineKeyboardButton(text="Katta mutaxassis (6-10 yil)", callback_data="seniority_senior")],
-        [InlineKeyboardButton(text="Rahbar / Biznes asoschisi (10+ yil)", callback_data="seniority_founder")],
+        [InlineKeyboardButton(text="🌱 Boshlang'ich (0-2 yil)", callback_data="seniority_junior")],
+        [InlineKeyboardButton(text="⚡ O'rta mutaxassis (3-5 yil)", callback_data="seniority_mid")],
+        [InlineKeyboardButton(text="🚀 Katta mutaxassis (6-10 yil)", callback_data="seniority_senior")],
+        [InlineKeyboardButton(text="👑 Rahbar / Biznes asoschisi (10+ yil)", callback_data="seniority_founder")],
     ])
 
 
@@ -46,16 +46,16 @@ def age_range_keyboard() -> InlineKeyboardMarkup:
     """Yosh oralig'ini tanlash."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="18-24", callback_data="age_18_24"),
-            InlineKeyboardButton(text="25-30", callback_data="age_25_30"),
+            InlineKeyboardButton(text="🎯 18-24 yosh", callback_data="age_18_24"),
+            InlineKeyboardButton(text="🎯 25-30 yosh", callback_data="age_25_30"),
         ],
         [
-            InlineKeyboardButton(text="31-35", callback_data="age_31_35"),
-            InlineKeyboardButton(text="36-40", callback_data="age_36_40"),
+            InlineKeyboardButton(text="🎯 31-35 yosh", callback_data="age_31_35"),
+            InlineKeyboardButton(text="🎯 36-40 yosh", callback_data="age_36_40"),
         ],
         [
-            InlineKeyboardButton(text="41-50", callback_data="age_41_50"),
-            InlineKeyboardButton(text="50+", callback_data="age_50_plus"),
+            InlineKeyboardButton(text="🎯 41-50 yosh", callback_data="age_41_50"),
+            InlineKeyboardButton(text="🎯 50+ yosh", callback_data="age_50_plus"),
         ],
     ])
 
@@ -63,34 +63,34 @@ def age_range_keyboard() -> InlineKeyboardMarkup:
 def partner_goal_keyboard() -> InlineKeyboardMarkup:
     """2-Bosqich: Sherikdan ko'zlangan asosiy maqsad."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Biznes hamkor / Hammuassis", callback_data="goal_cofounder")],
-        [InlineKeyboardButton(text="Investor / Moliyalashtirish", callback_data="goal_investor")],
-        [InlineKeyboardButton(text="Mijozlar / Buyurtmachilar topish", callback_data="goal_clients")],
-        [InlineKeyboardButton(text="Malakali mutaxassis / Jamoa yig'ish", callback_data="goal_team")],
-        [InlineKeyboardButton(text="Mentor / Tajribali maslahatchi", callback_data="goal_mentor")],
-        [InlineKeyboardButton(text="Tajriba almashish va networking", callback_data="goal_networking")],
+        [InlineKeyboardButton(text="🤝 Biznes hamkor / Hammuassis", callback_data="goal_cofounder")],
+        [InlineKeyboardButton(text="💰 Investor / Moliyalashtirish", callback_data="goal_investor")],
+        [InlineKeyboardButton(text="📈 Mijozlar / Buyurtmachilar topish", callback_data="goal_clients")],
+        [InlineKeyboardButton(text="👥 Malakali mutaxassis / Jamoa yig'ish", callback_data="goal_team")],
+        [InlineKeyboardButton(text="🧭 Mentor / Tajribali maslahatchi", callback_data="goal_mentor")],
+        [InlineKeyboardButton(text="🌐 Tajriba almashish va networking", callback_data="goal_networking")],
     ])
 
 
 def target_industry_keyboard() -> InlineKeyboardMarkup:
     """2-Bosqich: Qaysi soha vakillari bilan uchrashish qiziq."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Barcha soha vakillari bilan", callback_data="tgt_all")],
-        [InlineKeyboardButton(text="Axborot texnologiyalari (IT)", callback_data="tgt_it")],
-        [InlineKeyboardButton(text="Biznes, savdo va investitsiya", callback_data="tgt_business")],
-        [InlineKeyboardButton(text="Marketing va savdo mutaxassislari", callback_data="tgt_marketing")],
-        [InlineKeyboardButton(text="Ishlab chiqarish va xizmat ko'rsatish", callback_data="tgt_industry")],
-        [InlineKeyboardButton(text="Boshqa aniq soha (qo'lda yozaman)", callback_data="tgt_other")],
+        [InlineKeyboardButton(text="🌍 Barcha soha vakillari bilan", callback_data="tgt_all")],
+        [InlineKeyboardButton(text="💻 Axborot texnologiyalari (IT)", callback_data="tgt_it")],
+        [InlineKeyboardButton(text="💼 Biznes, savdo va investitsiya", callback_data="tgt_business")],
+        [InlineKeyboardButton(text="📢 Marketing va savdo mutaxassislari", callback_data="tgt_marketing")],
+        [InlineKeyboardButton(text="🏭 Ishlab chiqarish va xizmatlar", callback_data="tgt_industry")],
+        [InlineKeyboardButton(text="✍️ Boshqa aniq soha (qo'lda yozaman)", callback_data="tgt_other")],
     ])
 
 
 def target_seniority_keyboard() -> InlineKeyboardMarkup:
     """2-Bosqich: Qidirilayotgan sherikning tajriba darajasi."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Biznes egalari / Top-menejerlar", callback_data="tsen_founder")],
-        [InlineKeyboardButton(text="Katta mutaxassislar (Senior / 5+ yil)", callback_data="tsen_senior")],
-        [InlineKeyboardButton(text="O'rta darajadagi mutaxassislar (Mid)", callback_data="tsen_mid")],
-        [InlineKeyboardButton(text="Darajaning farqi yo'q (G'oyasi borlar)", callback_data="tsen_any")],
+        [InlineKeyboardButton(text="👑 Biznes egalari / Top-menejerlar", callback_data="tsen_founder")],
+        [InlineKeyboardButton(text="🚀 Katta mutaxassislar (Senior / 5+ yil)", callback_data="tsen_senior")],
+        [InlineKeyboardButton(text="⚡ O'rta darajadagi mutaxassislar (Mid)", callback_data="tsen_mid")],
+        [InlineKeyboardButton(text="🌟 Darajaning farqi yo'q (G'oyasi borlar)", callback_data="tsen_any")],
     ])
 
 

@@ -25,14 +25,22 @@ munosabat bildirib, keyingi savolni beradi.
 import logging
 import re
 from typing import Optional
+import urllib.parse
 
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    ReplyKeyboardRemove,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 from aiogram.fsm.context import FSMContext
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config import settings
 from db.session import async_session
 from db.models import User, Profile, InterviewSession
 from bot.states.interview import InterviewStates
@@ -71,7 +79,7 @@ async def start_interview_callback(callback: CallbackQuery, state: FSMContext):
     await _begin_stage1(callback.message, state)
 
 
-@router.message(F.text.in_(["Anketa / Ro'yxatdan o'tish", "☕ Suhbat / Intervyu", "Ro'yxatdan o'tish"]))
+@router.message(F.text.in_(["Anketa / Ro'yxatdan o'tish", "☕ Suhbat / Intervyu", "Ro'yxatdan o'tish", "🚀 Ro'yxatdan o'tish"]))
 async def start_interview_message(message: Message, state: FSMContext):
     """Intervyuni menyu orqali boshlash."""
     await _begin_stage1(message, state)
@@ -83,13 +91,15 @@ async def _begin_stage1(message: Message, state: FSMContext):
     await state.set_state(InterviewStates.stage1_full_name)
 
     intro_text = (
-        "Teahouse professional uchrashuvlar saralash anketasi.\n\n"
-        "Tizimimiz bir-biriga eng mos, o'zaro manfaatli va kuchli mutaxassislarni 3-4 kishilik davralarga birlashtiradi.\n\n"
+        "📋 **Teahouse professional uchrashuvlar saralash anketasi**\n\n"
+        "✨ Tizimimiz bir-biriga eng mos, o'zaro manfaatli va kuchli mutaxassislarni 3-4 kishilik davralarga birlashtiradi.\n\n"
         "Anketa 2 ta asosiy qismdan iborat:\n"
-        "1-qism: Sizning kasbiy tajribangiz, faoliyatingiz va erishgan natijalaringiz;\n"
-        "2-qism: Siz qidirayotgan sheriklar, uchrashuv mezonlari va muhokama mavzulari.\n\n"
-        "1-QISM: SHAXSIY VA KASBIY MA'LUMOTLAR\n\n"
-        "1-savol: To'liq ism va familiyangizni kiriting (masalan: Rustam Olimov):"
+        "🔹 **1-qism:** Sizning kasbiy tajribangiz, faoliyatingiz va erishgan natijalaringiz;\n"
+        "🔹 **2-qism:** Siz qidirayotgan sheriklar, uchrashuv mezonlari va muhokama mavzulari.\n\n"
+        "━━━━━━━━━━━━━━━━━━━\n"
+        "👤 **1-QISM: SHAXSIY VA KASBIY MA'LUMOTLAR**\n\n"
+        "1️⃣-savol: To'liq ism va familiyangizni kiriting:\n"
+        "(Masalan: Rustam Olimov)"
     )
 
     if hasattr(message, "edit_text"):
@@ -108,15 +118,15 @@ async def handle_full_name(message: Message, state: FSMContext):
     """1. Ism-familiya."""
     full_name = message.text.strip()
     if len(full_name) < 3 or " " not in full_name:
-        await message.answer("Iltimos, ism va familiyangizni to'liq kiriting (masalan: Rustam Olimov):")
+        await message.answer("⚠️ Iltimos, ism va familiyangizni to'liq kiriting (masalan: Rustam Olimov):")
         return
 
     await state.update_data(full_name=full_name)
     await state.set_state(InterviewStates.stage1_phone)
 
     await message.answer(
-        f"Rahmat, {full_name}.\n\n"
-        "2-savol: Telefon raqamingizni tasdiqlang.\n"
+        f"✅ Rahmat, {full_name}!\n\n"
+        "📱 **2️⃣-savol: Telefon raqamingizni tasdiqlang.**\n"
         "Pastdagi tugmani bosing yoki raqamingizni xalqaro formatda yozing (+998901234567):",
         reply_markup=phone_request_keyboard(),
     )
@@ -130,16 +140,16 @@ async def handle_phone(message: Message, state: FSMContext):
         phone = message.contact.phone_number
     elif message.text:
         raw = message.text.strip()
-        if raw == "Bekor qilish":
+        if raw in ["Bekor qilish", "❌ Bekor qilish"]:
             await state.clear()
-            await message.answer("Ro'yxatdan o'tish bekor qilindi.", reply_markup=main_menu_keyboard())
+            await message.answer("❌ Ro'yxatdan o'tish bekor qilindi.", reply_markup=main_menu_keyboard())
             return
         digits = re.sub(r"[^\d+]", "", raw)
         if len(digits) >= 9:
             phone = digits
         else:
             await message.answer(
-                "Telefon raqam noto'g'ri kiritildi. Iltimos, raqamni to'liq yozing yoki tugmani bosing:",
+                "⚠️ Telefon raqam noto'g'ri kiritildi. Iltimos, raqamni to'liq yozing yoki tugmani bosing:",
                 reply_markup=phone_request_keyboard(),
             )
             return
@@ -151,8 +161,8 @@ async def handle_phone(message: Message, state: FSMContext):
     await state.set_state(InterviewStates.stage1_role)
 
     await message.answer(
-        f"Telefon raqamingiz qabul qilindi: {phone}\n\n"
-        "3-savol: Asosiy kasbingiz va lavozimingiz nima?\n"
+        f"📞 Telefon raqamingiz qabul qilindi: {phone}\n\n"
+        "💼 **3️⃣-savol: Asosiy kasbingiz va lavozimingiz nima?**\n"
         "(Masalan: Senior Backend muhandisi, Savdo bo'limi boshlig'i, Bosh direktor / Asoschi, Moliya maslahatchisi):",
         reply_markup=ReplyKeyboardRemove(),
     )
@@ -163,7 +173,7 @@ async def handle_role(message: Message, state: FSMContext):
     """3. Kasb va lavozim."""
     role = message.text.strip()
     if len(role) < 2:
-        await message.answer("Iltimos, kasbingiz yoki lavozimingizni to'liqroq yozing:")
+        await message.answer("⚠️ Iltimos, kasbingiz yoki lavozimingizni to'liqroq yozing:")
         return
 
     await state.update_data(role=role)
@@ -171,7 +181,7 @@ async def handle_role(message: Message, state: FSMContext):
 
     data = await state.get_data()
     fallback = (
-        "Juda yaxshi. 4-savol: Hozirda qaysi kompaniya, tashkilot yoki startap loyihasi ustida ishlayapsiz?\n"
+        "Juda yaxshi! 🏢 **4️⃣-savol: Hozirda qaysi kompaniya, tashkilot yoki startap loyihasi ustida ishlayapsiz?**\n"
         "(Agar shaxsiy biznesingiz yoki frilans bo'lsa, loyihangiz nomini yoki sohasini yozing):"
     )
     await send_typing(message.chat.id)
@@ -193,8 +203,8 @@ async def handle_company(message: Message, state: FSMContext):
     await state.set_state(InterviewStates.stage1_industry)
 
     await message.answer(
-        f"Kompaniya / Loyiha: {company}\n\n"
-        "5-savol: Asosiy faoliyat sohangizni tanlang:",
+        f"🏢 Kompaniya / Loyiha: {company}\n\n"
+        "🌐 **5️⃣-savol: Asosiy faoliyat sohangizni tanlang:**",
         reply_markup=industry_keyboard(),
     )
 
@@ -214,7 +224,7 @@ async def handle_industry_callback(callback: CallbackQuery, state: FSMContext):
         "ind_medicine": "Tibbiyot va farmatsevtika",
     }
     if callback.data == "ind_other":
-        await callback.message.edit_text("Faoliyat sohangizni yozib yuboring:")
+        await callback.message.edit_text("✍️ Faoliyat sohangizni yozib yuboring:")
         return
 
     industry = industry_map.get(callback.data, "Boshqa soha")
@@ -222,8 +232,8 @@ async def handle_industry_callback(callback: CallbackQuery, state: FSMContext):
     await state.set_state(InterviewStates.stage1_seniority)
 
     await callback.message.edit_text(
-        f"Soha: {industry}\n\n"
-        "6-savol: Ushbu sohada tajriba darajangiz qanday? O'zingizga mosini tanlang:",
+        f"🌐 Soha: {industry}\n\n"
+        "⏳ **6️⃣-savol: Ushbu sohada tajriba darajangiz qanday? O'zingizga mosini tanlang:**",
         reply_markup=seniority_keyboard(),
     )
 
@@ -236,8 +246,8 @@ async def handle_industry_text(message: Message, state: FSMContext):
     await state.set_state(InterviewStates.stage1_seniority)
 
     await message.answer(
-        f"Soha: {industry}\n\n"
-        "6-savol: Ushbu sohada tajriba darajangiz qanday? O'zingizga mosini tanlang:",
+        f"🌐 Soha: {industry}\n\n"
+        "⏳ **6️⃣-savol: Ushbu sohada tajriba darajangiz qanday? O'zingizga mosini tanlang:**",
         reply_markup=seniority_keyboard(),
     )
 
@@ -257,9 +267,9 @@ async def handle_seniority_callback(callback: CallbackQuery, state: FSMContext):
     await state.set_state(InterviewStates.stage1_achievements)
 
     msg_text = (
-        f"Tajriba darajasi: {seniority_title}\n\n"
-        "7-savol (Muhim): Faoliyatingiz davomidagi eng katta yutug'ingiz, muvaffaqiyatli loyihangiz "
-        "yoki erishgan asosiy biznes ko'rsatkichlaringiz nimalardan iborat?\n"
+        f"⏳ Tajriba darajasi: {seniority_title}\n\n"
+        "🏆 **7️⃣-savol (Muhim): Faoliyatingiz davomidagi eng katta yutug'ingiz, muvaffaqiyatli loyihangiz "
+        "yoki erishgan asosiy biznes ko'rsatkichlaringiz nimalardan iborat?**\n"
         "(Masalan: Yillik aylanma, jamoa soni, foydalanuvchilar soni, eksport yoki qilingan yirik loyiha haqida batafsilroq yozing):"
     )
     await callback.message.edit_text(msg_text)
@@ -270,14 +280,14 @@ async def handle_achievements(message: Message, state: FSMContext):
     """7. Yutuqlarni qabul qilish va AI orqali tahlil qilib, 8-savolga o'tish."""
     achievements = message.text.strip()
     if len(achievements) < 10:
-        await message.answer("Iltimos, erishgan natijangiz yoki loyihangiz haqida batafsilroq yozing (kamida 1-2 gap):")
+        await message.answer("⚠️ Iltimos, erishgan natijangiz yoki loyihangiz haqida batafsilroq yozing (kamida 1-2 gap):")
         return
 
     await state.update_data(achievements=achievements)
     await state.set_state(InterviewStates.stage1_age)
 
     data = await state.get_data()
-    fallback = "Salmoqli natijalar! 8-savol: Yoshingizni tanlang:"
+    fallback = "Salmoqli natijalar! 🎂 **8️⃣-savol: Yoshingizni tanlang:**"
     await send_typing(message.chat.id)
     ai_reply = await generate_conversational_reaction(
         user_name=data.get("full_name", ""),
@@ -308,9 +318,10 @@ async def handle_age_callback(callback: CallbackQuery, state: FSMContext):
     await state.set_state(InterviewStates.stage2_partner_goal)
 
     text = (
-        "1-qism yakunlandi. Sizning kasbiy tajribangiz va natijalaringiz qabul qilindi.\n\n"
-        "2-QISM: QIDIRILAYOTGAN SHERIKLAR VA UCHRASHUV TALABLARI\n\n"
-        "9-savol: Teahouse uchrashuvlarida qatnashishdan asosiy maqsadingiz nima?\n"
+        "🎉 1-qism yakunlandi! Sizning kasbiy tajribangiz va natijalaringiz qabul qilindi.\n\n"
+        "━━━━━━━━━━━━━━━━━━━\n"
+        "🤝 **2-QISM: QIDIRILAYOTGAN SHERIKLAR VA UCHRASHUV TALABLARI**\n\n"
+        "🎯 **9️⃣-savol: Teahouse uchrashuvlarida qatnashishdan asosiy maqsadingiz nima?**\n"
         "Sizga aynan qanday suhbatdoshlar kerakligini tanlang:"
     )
     await callback.message.edit_text(text, reply_markup=partner_goal_keyboard())
@@ -335,8 +346,8 @@ async def handle_goal_callback(callback: CallbackQuery, state: FSMContext):
     await state.set_state(InterviewStates.stage2_target_industry)
 
     await callback.message.edit_text(
-        f"Maqsad: {goal}\n\n"
-        "10-savol: Bo'lajak uchrashuvda asosan qaysi soha vakillari bilan muloqot qilish siz uchun eng manfaatli?",
+        f"🎯 Maqsad: {goal}\n\n"
+        "🔍 **🔟-savol: Bo'lajak uchrashuvda asosan qaysi soha vakillari bilan muloqot qilish siz uchun eng manfaatli?**",
         reply_markup=target_industry_keyboard(),
     )
 
@@ -353,7 +364,7 @@ async def handle_target_industry_callback(callback: CallbackQuery, state: FSMCon
         "tgt_industry": "Ishlab chiqarish va xizmat ko'rsatish",
     }
     if callback.data == "tgt_other":
-        await callback.message.edit_text("Qaysi soha vakillari bilan uchrashmoqchisiz? Yozib yuboring:")
+        await callback.message.edit_text("✍️ Qaysi soha vakillari bilan uchrashmoqchisiz? Yozib yuboring:")
         return
 
     target_ind = tgt_map.get(callback.data, "Barcha sohalar")
@@ -361,8 +372,8 @@ async def handle_target_industry_callback(callback: CallbackQuery, state: FSMCon
     await state.set_state(InterviewStates.stage2_target_seniority)
 
     await callback.message.edit_text(
-        f"Izlanayotgan soha: {target_ind}\n\n"
-        "11-savol: Siz qidirayotgan suhbatdoshlar qanday darajadagi tajribaga ega bo'lishi muhim?",
+        f"🔍 Izlanayotgan soha: {target_ind}\n\n"
+        "📊 **1️⃣1️⃣-savol: Siz qidirayotgan suhbatdoshlar qanday darajadagi tajribaga ega bo'lishi muhim?**",
         reply_markup=target_seniority_keyboard(),
     )
 
@@ -375,8 +386,8 @@ async def handle_target_industry_text(message: Message, state: FSMContext):
     await state.set_state(InterviewStates.stage2_target_seniority)
 
     await message.answer(
-        f"Izlanayotgan soha: {target_ind}\n\n"
-        "11-savol: Siz qidirayotgan suhbatdoshlar qanday darajadagi tajribaga ega bo'lishi muhim?",
+        f"🔍 Izlanayotgan soha: {target_ind}\n\n"
+        "📊 **1️⃣1️⃣-savol: Siz qidirayotgan suhbatdoshlar qanday darajadagi tajribaga ega bo'lishi muhim?**",
         reply_markup=target_seniority_keyboard(),
     )
 
@@ -396,8 +407,8 @@ async def handle_target_seniority_callback(callback: CallbackQuery, state: FSMCo
     await state.set_state(InterviewStates.stage2_offer)
 
     text = (
-        f"Talab qilinadigan daraja: {target_seniority}\n\n"
-        "12-savol (Muhim): O'zingiz bo'lajak suhbatdoshlarga qanday aniq foyda, resurs yoki tajriba taklif qila olasiz?\n"
+        f"📊 Talab qilinadigan daraja: {target_seniority}\n\n"
+        "🎁 **1️⃣2️⃣-savol (Muhim): O'zingiz bo'lajak suhbatdoshlarga qanday aniq foyda, resurs yoki tajriba taklif qila olasiz?**\n"
         "(Masalan: B2B savdo tajribasi, investitsiya jalb qilish, jamoani boshqarish, texnik arxitektura yoki mijozlar bazasi):"
     )
     await callback.message.edit_text(text)
@@ -408,7 +419,7 @@ async def handle_offer(message: Message, state: FSMContext):
     """12. O'zining taklifini qabul qilish va AI munosabatidan so'ng 13-savol (mavzular)."""
     offer = message.text.strip()
     if len(offer) < 10:
-        await message.answer("Iltimos, taklifingiz va bera oladigan foydangiz haqida batafsilroq yozing (kamida 1-2 gap):")
+        await message.answer("⚠️ Iltimos, taklifingiz va bera oladigan foydangiz haqida batafsilroq yozing (kamida 1-2 gap):")
         return
 
     await state.update_data(can_offer=offer)
@@ -416,9 +427,9 @@ async def handle_offer(message: Message, state: FSMContext):
 
     data = await state.get_data()
     fallback = (
-        "Juda qimmatli taklif. Har qanday doimiy hamkorlik o'zaro manfaat ustiga quriladi.\n\n"
-        "13-savol (Yakuniy): 25-sentyabrdan keyingi jonli uchrashuv stolida aynan qaysi amaliy "
-        "muammo yoki professional mavzuni boshqalar bilan muhokama qilishni xohlaysiz?"
+        "Juda qimmatli taklif! Har qanday doimiy hamkorlik o'zaro manfaat ustiga quriladi.\n\n"
+        "💡 **1️⃣3️⃣-savol (Yakuniy): 25-sentyabrdan keyingi jonli uchrashuv stolida aynan qaysi amaliy "
+        "muammo yoki professional mavzuni boshqalar bilan muhokama qilishni xohlaysiz?**"
     )
     await send_typing(message.chat.id)
     ai_reply = await generate_conversational_reaction(
@@ -446,24 +457,24 @@ async def handle_expectations(message: Message, state: FSMContext):
     await state.set_state(InterviewStates.confirming_profile)
 
     summary_text = (
-        "ANKETA TO'LIQ TO'LDIRILDI\n"
+        "📋 **ANKETA TO'LIQ TO'LDIRILDI!**\n"
         "Kiritilgan barcha ma'lumotlarni tekshiring:\n\n"
-        "1-QISM: SHAXSIY VA KASBIY MA'LUMOTLAR\n"
-        f"- To'liq ism: {data.get('full_name')}\n"
-        f"- Telefon: {data.get('phone')}\n"
-        f"- Kasb va lavozim: {data.get('role')}\n"
-        f"- Kompaniya / Loyiha: {data.get('company')}\n"
-        f"- Faoliyat sohasi: {data.get('industry')}\n"
-        f"- Tajriba: {data.get('seniority')} ({data.get('experience_years')} yil)\n"
-        f"- Yutuqlari va natijasi: {data.get('achievements')}\n"
-        f"- Yosh: {data.get('age')}\n\n"
-        "2-QISM: QIDIRILAYOTGAN SHERIKLAR VA MEZONLAR\n"
-        f"- Maqsad: {data.get('target_partner')}\n"
-        f"- Qidirilayotgan soha: {data.get('target_industry')}\n"
-        f"- Qidirilayotgan daraja: {data.get('target_seniority')}\n"
-        f"- Boshqalarga taklifi: {data.get('can_offer')}\n"
-        f"- Muhokama mavzulari: {expectations}\n\n"
-        "SUN'IY INTELLEKT XULOSASI (BIO):\n"
+        "👤 **1-QISM: SHAXSIY VA KASBIY MA'LUMOTLAR**\n"
+        f"• Ism-familiya: {data.get('full_name')}\n"
+        f"• Telefon: {data.get('phone')}\n"
+        f"• Kasb va lavozim: {data.get('role')}\n"
+        f"• Kompaniya / Loyiha: {data.get('company')}\n"
+        f"• Faoliyat sohasi: {data.get('industry')}\n"
+        f"• Tajriba: {data.get('seniority')} ({data.get('experience_years')} yil)\n"
+        f"• Asosiy yutuqlari: {data.get('achievements')}\n"
+        f"• Yoshi: {data.get('age')}\n\n"
+        "🤝 **2-QISM: QIDIRILAYOTGAN SHERIKLAR VA MEZONLAR**\n"
+        f"• Uchrashuvdan maqsad: {data.get('target_partner')}\n"
+        f"• Qidirilayotgan soha: {data.get('target_industry')}\n"
+        f"• Qidirilayotgan daraja: {data.get('target_seniority')}\n"
+        f"• Boshqalarga taklifi: {data.get('can_offer')}\n"
+        f"• Muhokama mavzulari: {expectations}\n\n"
+        "🤖 **SUN'IY INTELLEKT XULOSASI (BIO):**\n"
         f"\"{bio_summary}\"\n\n"
         "Ma'lumotlar to'g'rimi? Tasdiqlaysizmi?"
     )
@@ -476,7 +487,7 @@ async def handle_expectations(message: Message, state: FSMContext):
 @router.callback_query(InterviewStates.confirming_profile, F.data == "confirm_profile")
 async def handle_confirm(callback: CallbackQuery, state: FSMContext):
     """Anketani tasdiqlash va bazaga saqlash."""
-    await callback.answer("Ma'lumotlar saqlanmoqda...")
+    await callback.answer("✅ Ma'lumotlar saqlanmoqda...")
     data = await state.get_data()
 
     try:
@@ -541,35 +552,34 @@ async def handle_confirm(callback: CallbackQuery, state: FSMContext):
     bot_username = bot_info.username or "teahouse_bot"
     ref_link = f"https://t.me/{bot_username}?start=ref_{callback.from_user.id}"
     share_text = "Toshkentdagi tadbirkorlar va kuchli mutaxassislar bilan networking! Teahouse saralash anketasidan o'ting:"
-    import urllib.parse
     share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote(share_text)}"
 
     ref_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Do'stlarni taklif qilish (Telegram)", url=share_url)],
+        [InlineKeyboardButton(text="👥 Do'stlarni taklif qilish (Telegram)", url=share_url)],
         [
-            InlineKeyboardButton(text="Teahouse haqida", callback_data="about_teahouse_info"),
-            InlineKeyboardButton(text="Yordam / FAQ", callback_data="help_info"),
+            InlineKeyboardButton(text="ℹ️ Teahouse haqida", callback_data="about_teahouse_info"),
+            InlineKeyboardButton(text="❓ Yordam / FAQ", callback_data="help_info"),
         ],
-        [InlineKeyboardButton(text="Mening anketam", callback_data="view_my_profile")],
+        [InlineKeyboardButton(text="👤 Mening anketam", callback_data="view_my_profile")],
     ])
 
     final_text = (
-        "Anketangiz muvaffaqiyatli qabul qilindi va tasdiqlandi!\n\n"
-        "Bizni kuting! Sun'iy intellekt tizimimiz siz kiritgan ma'lumotlar, sohangiz va erishgan natijalaringizni "
+        "🎉 **Anketangiz muvaffaqiyatli qabul qilindi va tasdiqlandi!**\n\n"
+        "☕ **Bizni kuting!** Sun'iy intellekt tizimimiz siz kiritgan ma'lumotlar, sohangiz va erishgan natijalaringizni "
         "chuqur tahlil qilib, aynan sizga mos va manfaatli bo'lgan jamoaviy davra (3 nafar suhbatdosh)ni tanlaydi.\n\n"
-        "25-sentyabr kuni soat 23:59 da saralash yakunlanadi va biz sizga shaxsiy stolingiz, "
+        "📅 **25-sentyabr kuni soat 23:59 da** saralash yakunlanadi va biz sizga shaxsiy stolingiz, "
         "sheriklaringiz kimligi hamda Toshkent markazidagi shinam qahvaxonadagi uchrashuv tafsilotlari bilan qaytamiz!\n\n"
-        "DO'STLARNI TAKLIF QILISH:\n"
+        "🚀 **DO'STLARNI TAKLIF QILISH:**\n"
         "O'zingiz kabi intiluvchan tadbirkor va kuchli mutaxassis do'stlaringizni taklif qiling. "
         "Davramiz qanchalik keng bo'lsa, siz uchun hamkorlik imkoniyatlari shunchalik yuqori bo'ladi.\n\n"
-        "Sizning shaxsiy taklif havolangiz:\n"
+        "🔗 **Sizning shaxsiy taklif havolangiz:**\n"
         f"{ref_link}"
     )
 
     await callback.message.edit_text(final_text, reply_markup=ref_keyboard)
     is_admin = callback.from_user.id in settings.admin_ids_list
     await callback.message.answer(
-        "Boshqaruv menyusi faollashdi:",
+        "⚡ Boshqaruv menyusi faollashdi:",
         reply_markup=main_menu_keyboard(is_admin=is_admin)
     )
 
@@ -589,41 +599,40 @@ async def view_my_profile_callback(callback: CallbackQuery):
         res_u = await session.execute(select(User).where(User.telegram_id == callback.from_user.id))
         user = res_u.scalar_one_or_none()
         if not user:
-            await callback.message.answer("Ma'lumot topilmadi.")
+            await callback.message.answer("⚠️ Ma'lumot topilmadi.")
             return
 
         res_p = await session.execute(select(Profile).where(Profile.user_id == user.id))
         profile = res_p.scalar_one_or_none()
 
     if not profile or not profile.bio_summary:
-        await callback.message.answer("Siz hali anketani to'ldirmagansiz.")
+        await callback.message.answer("⚠️ Siz hali anketani to'ldirmagansiz.")
         return
 
     bot_info = await callback.bot.get_me()
     ref_link = f"https://t.me/{bot_info.username or 'teahouse_bot'}?start=ref_{callback.from_user.id}"
-    import urllib.parse
     share_text = "Toshkentdagi tadbirkorlar va mutaxassislar bilan networking! Teahouse saralashidan o'ting:"
     share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote(share_text)}"
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Do'stlarga ulashish (Telegram)", url=share_url)],
-        [InlineKeyboardButton(text="Qaytadan to'ldirish", callback_data="redo_interview")],
+        [InlineKeyboardButton(text="👥 Do'stlarga ulashish (Telegram)", url=share_url)],
+        [InlineKeyboardButton(text="🔄 Qaytadan to'ldirish", callback_data="redo_interview")],
     ])
 
     text = (
-        "SIZNING ANKETANGIZ VA PROFILINGIZ\n\n"
-        f"Ism: {user.first_name}\n"
-        f"Telefon: {user.phone or '—'}\n"
-        f"Kasb va lavozim: {profile.role or '—'}\n"
-        f"Kompaniya: {profile.company or '—'}\n"
-        f"Soha: {profile.industry or '—'}\n"
-        f"Tajriba: {profile.seniority or '—'} ({profile.experience_years or 0} yil)\n"
-        f"Eng katta yutug'i: {profile.achievements or '—'}\n"
-        f"Qidirayotgan sherigi: {profile.target_partner or '—'}\n"
-        f"Kerakli daraja: {profile.target_seniority or '—'}\n"
-        f"Boshqalarga taklifi: {profile.can_offer or '—'}\n\n"
-        f"AI Xulosasi (BIO):\n\"{profile.bio_summary}\"\n\n"
-        f"Sizning taklif havolangiz:\n{ref_link}"
+        "📋 **SIZNING ANKETANGIZ VA PROFILINGIZ**\n\n"
+        f"👤 Ism: {user.first_name}\n"
+        f"📱 Telefon: {user.phone or '—'}\n"
+        f"💼 Kasb va lavozim: {profile.role or '—'}\n"
+        f"🏢 Kompaniya: {profile.company or '—'}\n"
+        f"🌐 Soha: {profile.industry or '—'}\n"
+        f"⏳ Tajriba: {profile.seniority or '—'} ({profile.experience_years or 0} yil)\n"
+        f"🏆 Eng katta yutug'i: {profile.achievements or '—'}\n"
+        f"🎯 Qidirayotgan sherigi: {profile.target_partner or '—'}\n"
+        f"📊 Kerakli daraja: {profile.target_seniority or '—'}\n"
+        f"🎁 Boshqalarga taklifi: {profile.can_offer or '—'}\n\n"
+        f"🤖 **AI Xulosasi (BIO):**\n\"{profile.bio_summary}\"\n\n"
+        f"🔗 **Sizning taklif havolangiz:**\n{ref_link}"
     )
     await callback.message.answer(text, reply_markup=kb)
 
@@ -633,12 +642,12 @@ async def about_teahouse_info_callback(callback: CallbackQuery):
     """Teahouse haqida ma'lumot."""
     await callback.answer()
     text = (
-        "TEAHOUSE HAQIDA:\n\n"
+        "☕ **TEAHOUSE HAQIDA:**\n\n"
         "Teahouse — Toshkentdagi tadbirkorlar, startapchilar va yuqori malakali mutaxassislarni "
         "qahva stoli atrofida birlashtiruvchi saralangan networking klubi.\n\n"
         "Har bir ishtirokchi sun'iy intellekt tomonidan tahlil qilinib, "
         "bitta stol atrofida bir-biriga eng ko'p manfaati tegadigan 4 kishi jamlanadi.\n\n"
-        "25-sentyabr kuni soat 23:59 da ro'yxatdan o'tish to'xtatiladi va stollar e'lon qilinadi."
+        "📅 **25-sentyabr kuni soat 23:59 da** ro'yxatdan o'tish to'xtatiladi va stollar e'lon qilinadi."
     )
     await callback.message.answer(text)
 
@@ -648,12 +657,12 @@ async def help_info_callback(callback: CallbackQuery):
     """Yordam va ko'p beriladigan savollar."""
     await callback.answer()
     text = (
-        "YORDAM VA SAVOL-JAVOBLAR:\n\n"
-        "1. Uchrashuv qachon bo'ladi?\n"
+        "❓ **YORDAM VA SAVOL-JAVOBLAR:**\n\n"
+        "1️⃣ **Uchrashuv qachon bo'ladi?**\n"
         "25-sentyabr saralashidan so'ng, Chorshanba kuni soat 20:00 da.\n\n"
-        "2. Uchrashuv qayerda o'tkaziladi?\n"
+        "2️⃣ **Uchrashuv qayerda o'tkaziladi?**\n"
         "Toshkent markazidagi eng shinam va nufuzli qahvaxonalaridan birida.\n\n"
-        "3. Bir stolda necha kishi o'tiradi?\n"
+        "3️⃣ **Bir stolda necha kishi o'tiradi?**\n"
         "Har bir stolda aniq 4 nafar saralangan qatnashchi bo'ladi.\n\n"
         "Savollaringiz yoki takliflaringiz bo'lsa, @durd1matov administratoriga yozishingiz mumkin."
     )

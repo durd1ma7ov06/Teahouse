@@ -5,7 +5,13 @@ from typing import Optional
 
 from aiogram import Router, F
 from aiogram.filters import CommandStart, CommandObject
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    ReplyKeyboardRemove,
+)
 from aiogram.fsm.context import FSMContext
 
 from sqlalchemy import select
@@ -142,20 +148,20 @@ async def _send_welcome(message: Message, first_name: str, has_profile: bool):
         share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote(share_text)}"
 
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Do'stlarga ulashish (Telegram)", url=share_url)],
-            [InlineKeyboardButton(text="Mening anketam", callback_data="view_my_profile")],
+            [InlineKeyboardButton(text="👥 Do'stlarga ulashish (Telegram)", url=share_url)],
+            [InlineKeyboardButton(text="👤 Mening anketam", callback_data="view_my_profile")],
         ])
 
         text = (
-            f"Assalomu alaykum, {first_name}.\n\n"
-            "Sizning anketangiz muvaffaqiyatli qabul qilingan va sun'iy intellekt tahlil tizimida faol holatda.\n\n"
-            "Eslatma:\n"
-            "- Qabul 25-sentyabr soat 23:59 gacha davom etadi;\n"
-            "- 25-sentyabr kuni sun'iy intellekt barcha anketalarni tahlil qilib, sizga mos 3 nafar sherikni tanlaydi;\n"
-            "- Shu kuni sizga shaxsiy Telegram Mini App akkauntingiz va uchrashuv stoli e'lon qilinadi.\n\n"
-            "DO'STLARNI TAKLIF QILISH:\n"
+            f"✨ Assalomu alaykum, {first_name}!\n\n"
+            "📋 Sizning anketangiz muvaffaqiyatli qabul qilingan va sun'iy intellekt tahlil tizimida faol holatda.\n\n"
+            "📌 Muhim eslatma:\n"
+            "⏳ Qabul 25-sentyabr soat 23:59 gacha davom etadi;\n"
+            "🤖 25-sentyabr kuni sun'iy intellekt barcha anketalarni tahlil qilib, sizga eng mos 3 nafar sherikni tanlaydi;\n"
+            "☕ Shu kuni sizga shaxsiy Telegram Mini App akkauntingiz va uchrashuv stoli e'lon qilinadi.\n\n"
+            "🚀 DO'STLARNI TAKLIF QILISH:\n"
             "O'zingizga munosib tadbirkor va mutaxassis do'stlaringizni taklif qiling:\n"
-            f"{ref_link}"
+            f"👉 {ref_link}"
         )
         await message.answer(
             text,
@@ -175,15 +181,14 @@ async def _send_welcome(message: Message, first_name: str, has_profile: bool):
             parse_mode=None,
         )
     else:
-        from aiogram.types import ReplyKeyboardRemove
         text = (
-            f"Assalomu alaykum, {first_name}.\n\n"
-            "Teahouse professional networking platformasiga xush kelibsiz.\n\n"
-            "Biznesingiz yoki loyihangiz uchun mos hamkorlar, investorlar va tajribali mutaxassislar davrasiga qo'shilish uchun ro'yxatdan o'ting.\n\n"
-            "Anketani to'ldirish uchun pastdagi tugmani bosing:"
+            f"👋 Assalomu alaykum, {first_name}!\n\n"
+            "☕ **Teahouse professional networking platformasiga xush kelibsiz!**\n\n"
+            "Biznesingiz yoki loyihangiz uchun mos hamkorlar, investorlar va tajribali mutaxassislar davrasiga qo'shilish uchun saralash anketasini to'ldiring.\n\n"
+            "👇 Anketani to'ldirish uchun pastdagi tugmani bosing:"
         )
         # Pastdagi barcha tugmalarni tozalash
-        await message.answer("Xush kelibsiz.", reply_markup=ReplyKeyboardRemove())
+        await message.answer("Xush kelibsiz!", reply_markup=ReplyKeyboardRemove())
         await message.answer(
             text,
             reply_markup=start_keyboard(),

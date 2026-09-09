@@ -67,8 +67,8 @@ def phone_request_keyboard() -> ReplyKeyboardMarkup:
     """Telefon raqamni yuborish tugmasi."""
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Telefon raqamimni yuborish", request_contact=True)],
-            [KeyboardButton(text="Bekor qilish")],
+            [KeyboardButton(text="📱 Telefon raqamimni yuborish", request_contact=True)],
+            [KeyboardButton(text="❌ Bekor qilish")],
         ],
         resize_keyboard=True,
         one_time_keyboard=True,

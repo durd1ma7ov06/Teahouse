@@ -27,7 +27,7 @@ Sening vazifang: foydalanuvchi bilan jonli, madaniyatli va mazmunli suhbat orqal
 
 MUHIM QOIDALAR:
 1. O'zbek tilida gaplash.
-2. EMOJILARDAN MUTLAQO FOYDALANMA. Matnda hech qanday smaylik yoki emoji belgisi bo'lmasin.
+2. Matnda 1-2 ta mos, chiroyli va ijobiy emojilardan foydalan (masalan: 👏, 🚀, 💼, 🤝, 🎯, 💡).
 3. Suhbat rasmiy, ishbilarmon, samimiy va hurmat ohangida bo'lsin.
 4. Javoblaring qisqa va lo'nda bo'lsin (1-2 gap munosabat + 1 ta savol).
 5. Suhbatdosh aytgan ma'lumotlar (kompaniyasi, loyihasi, erishgan yutuqlari)ni e'tiborga olib, savolni uning darajasiga moslab ber."""
@@ -38,7 +38,6 @@ Ushbu BIO uchrashuvdagi sheriklarga ko'rsatiladi.
 
 Qoidalar:
 - O'zbek tilida yoz.
-- EMOJI MUTLAQO ISHLATMA.
 - Foydalanuvchining kasbi, sohasi, erishgan asosiy natijasi va kimlar bilan uchrashmoqchi ekanini aniq ochib ber.
 - Faqat matn qaytar, ortiqcha izohlarsiz."""
 
@@ -58,7 +57,7 @@ async def generate_conversational_reaction(
         f"Keyingi so'ralishi kerak bo'lgan ma'lumot: {next_question}\n\n"
         f"Ko'rsatma: Foydalanuvchining javobiga (yutug'i yoki darajasiga) qisqa, salmoqli va samimiy munosabat bildir (1 ta gap). "
         f"So'ng keyingi savolni uning darajasiga moslab, chiroyli va qiziqarli qilib ber. "
-        f"Jami 2 ta gapdan oshmasin. Emojilardan mutlaqo foydalanma!"
+        f"Jami 2 ta gapdan oshmasin. 1-2 ta mos emoji ishlat."
     )
 
     try:
@@ -75,8 +74,6 @@ async def generate_conversational_reaction(
             timeout=8.0
         )
         text = response.choices[0].message.content.strip()
-        # Emojilarni tozalash (agar AI tasodifan qo'shsa)
-        text = re.sub(r'[\U00010000-\U0010ffff]', '', text).strip()
         if text:
             return text
         return fallback_text
