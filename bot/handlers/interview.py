@@ -567,6 +567,9 @@ async def handle_confirm(callback: CallbackQuery, state: FSMContext):
     )
 
     await callback.message.edit_text(final_text, reply_markup=ref_keyboard)
+    # Anketa to'liq yakunlangach, pastdagi doimiy menyuni ham chiqarib qo'yamiz
+    is_admin = callback.from_user.id in settings.admin_ids_list
+    await callback.message.answer("Pastdagi menyu orqali profilingizni ko'rishingiz yoki do'stlaringizni taklif qilishingiz mumkin:", reply_markup=main_menu_keyboard(is_admin=is_admin))
 
 
 @router.callback_query(InterviewStates.confirming_profile, F.data == "redo_interview")

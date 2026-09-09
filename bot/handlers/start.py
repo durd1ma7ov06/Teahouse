@@ -175,12 +175,15 @@ async def _send_welcome(message: Message, first_name: str, has_profile: bool):
             parse_mode=None,
         )
     else:
+        from aiogram.types import ReplyKeyboardRemove
         text = (
             f"Assalomu alaykum, {first_name}.\n\n"
             "Teahouse professional networking platformasiga xush kelibsiz.\n\n"
             "Biznesingiz yoki loyihangiz uchun mos hamkorlar, investorlar va tajribali mutaxassislar davrasiga qo'shilish uchun ro'yxatdan o'ting.\n\n"
             "Anketani to'ldirish uchun pastdagi tugmani bosing:"
         )
+        # Pastdagi barcha tugmalarni tozalash
+        await message.answer("Xush kelibsiz.", reply_markup=ReplyKeyboardRemove())
         await message.answer(
             text,
             reply_markup=start_keyboard(),
