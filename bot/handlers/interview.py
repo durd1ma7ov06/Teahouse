@@ -543,23 +543,27 @@ async def handle_confirm(callback: CallbackQuery, state: FSMContext):
     share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote(share_text)}"
 
     ref_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Do'stlarga ulashish (Telegram)", url=share_url)],
-        [InlineKeyboardButton(text="Anketamni ko'rish", callback_data="view_my_profile")],
+        [InlineKeyboardButton(text="Do'stlarni taklif qilish (Telegram)", url=share_url)],
+        [
+            InlineKeyboardButton(text="Teahouse haqida", callback_data="about_teahouse_info"),
+            InlineKeyboardButton(text="Yordam / FAQ", callback_data="help_info"),
+        ],
+        [InlineKeyboardButton(text="Mening anketam", callback_data="view_my_profile")],
     ])
 
     final_text = (
         "Anketangiz to'liq qabul qilindi va tahlil tizimiga kiritildi!\n\n"
-        "Keyingi bosqich qanday bo'ladi:\n"
+        "Keyingi bosqich tartibi:\n"
         "- Qabul 25-sentyabr soat 23:59 da to'xtatiladi;\n"
         "- Sun'iy intellekt siz kiritgan yutuqlar, tajriba va qidirayotgan mezonlaringiz asosida "
         "sizga eng munosib 3 nafar suhbatdoshni tanlaydi;\n"
         "- 25-sentyabr kuni sizga Telegram orqali shaxsiy stolingiz, suhbatdoshlar xulosasi (BIO) va "
         "Toshkent markazidagi qulay qahvaxonadagi uchrashuv tafsilotlari yuboriladi.\n\n"
         "DO'STLARNI TAKLIF QILISH:\n"
-        "O'zingizga o'xshagan tadbirkor va kuchli mutaxassis do'stlaringizni taklif qiling. "
+        "O'zingizga munosib tadbirkor va kuchli mutaxassis do'stlaringizni taklif qiling. "
         "Sizning shaxsiy taklif havolangiz:\n"
         f"{ref_link}\n\n"
-        "Pastdagi tugma orqali havolani do'stlaringizga bittada yuborishingiz mumkin:"
+        "Quyidagi tugmalardan birini tanlashingiz mumkin:"
     )
 
     await callback.message.edit_text(final_text, reply_markup=ref_keyboard)
@@ -617,4 +621,37 @@ async def view_my_profile_callback(callback: CallbackQuery):
         f"Sizning taklif havolangiz:\n{ref_link}"
     )
     await callback.message.answer(text, reply_markup=kb)
+
+
+@router.callback_query(F.data == "about_teahouse_info")
+async def about_teahouse_info_callback(callback: CallbackQuery):
+    """Teahouse haqida ma'lumot."""
+    await callback.answer()
+    text = (
+        "TEAHOUSE HAQIDA:\n\n"
+        "Teahouse — Toshkentdagi tadbirkorlar, startapchilar va yuqori malakali mutaxassislarni "
+        "qahva stoli atrofida birlashtiruvchi saralangan networking klubi.\n\n"
+        "Har bir ishtirokchi sun'iy intellekt tomonidan tahlil qilinib, "
+        "bitta stol atrofida bir-biriga eng ko'p manfaati tegadigan 4 kishi jamlanadi.\n\n"
+        "25-sentyabr kuni soat 23:59 da ro'yxatdan o'tish to'xtatiladi va stollar e'lon qilinadi."
+    )
+    await callback.message.answer(text)
+
+
+@router.callback_query(F.data == "help_info")
+async def help_info_callback(callback: CallbackQuery):
+    """Yordam va ko'p beriladigan savollar."""
+    await callback.answer()
+    text = (
+        "YORDAM VA SAVOL-JAVOBLAR:\n\n"
+        "1. Uchrashuv qachon bo'ladi?\n"
+        "25-sentyabr saralashidan so'ng, Chorshanba kuni soat 20:00 da.\n\n"
+        "2. Uchrashuv qayerda o'tkaziladi?\n"
+        "Toshkent markazidagi eng shinam va nufuzli qahvaxonalaridan birida.\n\n"
+        "3. Bir stolda necha kishi o'tiradi?\n"
+        "Har bir stolda aniq 4 nafar saralangan qatnashchi bo'ladi.\n\n"
+        "Savollaringiz yoki takliflaringiz bo'lsa, @durd1matov administratoriga yozishingiz mumkin."
+    )
+    await callback.message.answer(text)
+
 
