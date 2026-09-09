@@ -124,6 +124,16 @@ async def handle_full_name(message: Message, state: FSMContext):
     await state.update_data(full_name=full_name)
     await state.set_state(InterviewStates.stage1_phone)
 
+    try:
+        async with async_session() as session:
+            res_u = await session.execute(select(User).where(User.telegram_id == message.from_user.id))
+            u = res_u.scalar_one_or_none()
+            if u:
+                u.first_name = full_name
+                await session.commit()
+    except Exception as e:
+        logger.error(f"Ism saqlashda baza xatosi: {e}")
+
     await message.answer(
         f"✅ Rahmat, {full_name}!\n\n"
         "📱 **2️⃣-savol: Telefon raqamingizni tasdiqlang.**\n"
@@ -159,6 +169,16 @@ async def handle_phone(message: Message, state: FSMContext):
 
     await state.update_data(phone=phone)
     await state.set_state(InterviewStates.stage1_role)
+
+    try:
+        async with async_session() as session:
+            res_u = await session.execute(select(User).where(User.telegram_id == message.from_user.id))
+            u = res_u.scalar_one_or_none()
+            if u:
+                u.phone = phone
+                await session.commit()
+    except Exception as e:
+        logger.error(f"Telefon saqlashda baza xatosi: {e}")
 
     await message.answer(
         f"📞 Telefon raqamingiz qabul qilindi: {phone}\n\n"

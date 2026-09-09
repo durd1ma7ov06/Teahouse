@@ -337,6 +337,7 @@ async def export_members_excel():
             "Username",
             "To'liq Ism",
             "Telefon",
+            "Anketa Holati",
             "Kasb/Lavozim",
             "Kompaniya/Loyiha",
             "Soha",
@@ -355,12 +356,20 @@ async def export_members_excel():
 
         data_rows = []
         for user, profile in results:
+            if profile and profile.bio_summary:
+                status = "To'liq topshirilgan"
+            elif user.phone:
+                status = "Jarayonda (Telefon bergan)"
+            else:
+                status = "Faqat botga kirgan"
+
             data_rows.append([
                 user.id,
                 user.telegram_id,
                 f"@{user.username}" if user.username else "",
                 user.first_name,
                 user.phone or "",
+                status,
                 profile.role if profile else "",
                 profile.company if profile else "",
                 profile.industry if profile else "",

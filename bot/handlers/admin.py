@@ -192,6 +192,7 @@ async def admin_export_csv(event: Message | CallbackQuery):
         "Ism-Familiya",
         "Telegram Username",
         "Telefon raqam",
+        "Anketa Holati",
         "Yoshi",
         "Kasbi / Lavozimi",
         "Kompaniya / Loyiha",
@@ -210,12 +211,20 @@ async def admin_export_csv(event: Message | CallbackQuery):
     export_rows = []
     for u, p in rows:
         created_at_str = u.created_at.strftime("%Y-%m-%d %H:%M") if hasattr(u, "created_at") and u.created_at else ""
+        if p and p.bio_summary:
+            status = "To'liq topshirilgan"
+        elif u.phone:
+            status = "Jarayonda (Telefon bergan)"
+        else:
+            status = "Faqat botga kirgan"
+
         export_rows.append([
             u.id,
             u.telegram_id,
             u.first_name,
             f"@{u.username}" if u.username else "",
             u.phone or "",
+            status,
             p.age if p and p.age else "",
             p.role if p and p.role else "",
             p.company if p and p.company else "",
