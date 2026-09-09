@@ -321,8 +321,8 @@ async def admin_dashboard(secret: Optional[str] = Query(None)):
 
 
 @app.get("/admin/export")
-async def export_members_csv():
-    """Barcha ma'lumotlarni to'liq Excel (.csv) formatida yuklab olish."""
+async def export_members_excel():
+    """Barcha ma'lumotlarni to'liq Excel (.xlsx yoki .csv) formatida yuklab olish."""
     async with async_session() as session:
         stmt = (
             select(User, Profile)
@@ -331,11 +331,7 @@ async def export_members_csv():
         )
         results = (await session.execute(stmt)).all()
 
-        output = io.StringIO()
-        writer = csv.writer(output, delimiter=";")
-
-        # Sarlavhalar
-        writer.writerow([
+        headers = [
             "ID",
             "Telegram ID",
             "Username",
@@ -355,10 +351,11 @@ async def export_members_csv():
             "Muhokama Mavzulari",
             "AI Xulosa (Bio)",
             "Ro'yxatdan O'tgan Sana",
-        ])
+        ]
 
+        data_rows = []
         for user, profile in results:
-            writer.writerow([
+            data_rows.append([
                 user.id,
                 user.telegram_id,
                 f"@{user.username}" if user.username else "",
@@ -380,12 +377,81 @@ async def export_members_csv():
                 user.created_at.strftime("%Y-%m-%d %H:%M") if user.created_at else "",
             ])
 
-        output.seek(0)
-        csv_bytes = output.getvalue().encode("utf-8-sig")
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils import get_column_letter
+            has_openpyxl = True
+        except ImportError:
+            has_openpyxl = False
 
-        filename = f"teahouse_members_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
-        return Response(
-            content=csv_bytes,
-            media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
+        if has_openpyxl:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Teahouse A'zolari"
+            ws.append(headers)
+
+            header_fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
+            header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+            header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            thin_border = Border(
+                left=Side(style="thin", color="CBD5E1"),
+                right=Side(style="thin", color="CBD5E1"),
+                top=Side(style="thin", color="CBD5E1"),
+                bottom=Side(style="thin", color="CBD5E1"),
+            )
+
+            for col_idx in range(1, len(headers) + 1):
+                cell = ws.cell(row=1, column=col_idx)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = header_align
+                cell.border = thin_border
+
+            ws.row_dimensions[1].height = 28
+
+            for row_data in data_rows:
+                ws.append(row_data)
+                row_idx = ws.max_row
+                ws.row_dimensions[row_idx].height = 22
+                for col_idx in range(1, len(row_data) + 1):
+                    cell = ws.cell(row=row_idx, column=col_idx)
+                    cell.border = thin_border
+                    cell.alignment = Alignment(vertical="center")
+
+            for col in ws.columns:
+                max_len = 0
+                col_letter = get_column_letter(col[0].column)
+                for cell in col:
+                    val = str(cell.value or "")
+                    if len(val) > max_len:
+                        max_len = len(val)
+                ws.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 40)
+
+            excel_buffer = io.BytesIO()
+            wb.save(excel_buffer)
+            excel_bytes = excel_buffer.getvalue()
+
+            filename = f"teahouse_members_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+            return Response(
+                content=excel_bytes,
+                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+        else:
+            output = io.StringIO()
+            output.write("sep=;\n")
+            writer = csv.writer(output, delimiter=";")
+            writer.writerow(headers)
+            for row in data_rows:
+                writer.writerow(row)
+
+            output.seek(0)
+            csv_bytes = output.getvalue().encode("utf-8-sig")
+
+            filename = f"teahouse_members_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
+            return Response(
+                content=csv_bytes,
+                media_type="text/csv",
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )

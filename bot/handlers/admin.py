@@ -186,9 +186,6 @@ async def admin_export_csv(event: Message | CallbackQuery):
         rows = (await session.execute(query)).all()
 
     now_str = datetime.now().strftime("%Y_%m_%d_%H%M")
-    filename = f"teahouse_members_{now_str}.csv"
-    filepath = os.path.join(os.getcwd(), filename)
-
     fieldnames = [
         "ID",
         "Telegram ID",
@@ -210,45 +207,106 @@ async def admin_export_csv(event: Message | CallbackQuery):
         "Ro'yxatdan o'tgan sana",
     ]
 
-    # delimiter=';' orqali WPS Office va Excel har bir ustunni chiroyli qilib ajratadi
-    with open(filepath, mode="w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f, delimiter=";")
-        writer.writerow(fieldnames)
+    export_rows = []
+    for u, p in rows:
+        created_at_str = u.created_at.strftime("%Y-%m-%d %H:%M") if hasattr(u, "created_at") and u.created_at else ""
+        export_rows.append([
+            u.id,
+            u.telegram_id,
+            u.first_name,
+            f"@{u.username}" if u.username else "",
+            u.phone or "",
+            p.age if p and p.age else "",
+            p.role if p and p.role else "",
+            p.company if p and p.company else "",
+            p.industry if p and p.industry else "",
+            p.experience_years if p and p.experience_years else "",
+            p.achievements if p and hasattr(p, "achievements") and p.achievements else "",
+            p.target_partner if p and p.target_partner else (p.current_goal if p else ""),
+            p.target_industry if p and p.target_industry else "",
+            p.target_seniority if p and hasattr(p, "target_seniority") and p.target_seniority else "",
+            p.can_offer if p and p.can_offer else "",
+            p.interests if p and p.interests else "",
+            p.bio_summary if p and p.bio_summary else "",
+            created_at_str,
+        ])
 
-        for u, p in rows:
-            created_at_str = u.created_at.strftime("%Y-%m-%d %H:%M") if hasattr(u, "created_at") and u.created_at else ""
-            writer.writerow([
-                u.id,
-                u.telegram_id,
-                u.first_name,
-                f"@{u.username}" if u.username else "",
-                u.phone or "",
-                p.age if p and p.age else "",
-                p.role if p and p.role else "",
-                p.company if p and p.company else "",
-                p.industry if p and p.industry else "",
-                p.experience_years if p and p.experience_years else "",
-                p.achievements if p and hasattr(p, "achievements") and p.achievements else "",
-                p.target_partner if p and p.target_partner else (p.current_goal if p else ""),
-                p.target_industry if p and p.target_industry else "",
-                p.target_seniority if p and hasattr(p, "target_seniority") and p.target_seniority else "",
-                p.can_offer if p and p.can_offer else "",
-                p.interests if p and p.interests else "",
-                p.bio_summary if p and p.bio_summary else "",
-                created_at_str,
-            ])
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+        has_openpyxl = True
+    except ImportError:
+        has_openpyxl = False
+
+    if has_openpyxl:
+        filename = f"teahouse_members_{now_str}.xlsx"
+        filepath = os.path.join(os.getcwd(), filename)
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Teahouse A'zolari"
+
+        ws.append(fieldnames)
+
+        # Style header
+        header_fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
+        header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+        header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        thin_border = Border(
+            left=Side(style="thin", color="CBD5E1"),
+            right=Side(style="thin", color="CBD5E1"),
+            top=Side(style="thin", color="CBD5E1"),
+            bottom=Side(style="thin", color="CBD5E1"),
+        )
+
+        for col_idx in range(1, len(fieldnames) + 1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = header_align
+            cell.border = thin_border
+
+        ws.row_dimensions[1].height = 28
+
+        for row_data in export_rows:
+            ws.append(row_data)
+            row_idx = ws.max_row
+            ws.row_dimensions[row_idx].height = 22
+            for col_idx in range(1, len(row_data) + 1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                cell.border = thin_border
+                cell.alignment = Alignment(vertical="center")
+
+        for col in ws.columns:
+            max_len = 0
+            col_letter = get_column_letter(col[0].column)
+            for cell in col:
+                val = str(cell.value or "")
+                if len(val) > max_len:
+                    max_len = len(val)
+            ws.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 40)
+
+        wb.save(filepath)
+    else:
+        filename = f"teahouse_members_{now_str}.csv"
+        filepath = os.path.join(os.getcwd(), filename)
+        with open(filepath, mode="w", newline="", encoding="utf-8-sig") as f:
+            f.write("sep=;\n")
+            writer = csv.writer(f, delimiter=";")
+            writer.writerow(fieldnames)
+            for r in export_rows:
+                writer.writerow(r)
 
     try:
         doc = FSInputFile(filepath, filename=filename)
         caption = (
-            f"Teahouse a'zolari to'liq ro'yxati (Excel CSV)\n\n"
-            f"Jami a'zolar: {len(rows)} nafar\n"
-            f"Vaqt: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            "Ushbu faylni to'g'ridan-to'g'ri Microsoft Excel yoki Google Sheets dasturida ochishingiz mumkin."
+            f"📊 Teahouse a'zolari to'liq ro'yxati (Excel)\n\n"
+            f"👥 Jami a'zolar: {len(rows)} nafar\n"
+            f"📅 Vaqt: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            "✅ Ushbu faylni to'g'ridan-to'g'ri Microsoft Excel, WPS Office yoki Google Sheets dasturida ochishingiz mumkin."
         )
         await reply_target.answer_document(document=doc, caption=caption, parse_mode=None)
     finally:
-        # Faylni jo'natgach o'chirish
         if os.path.exists(filepath):
             try:
                 os.remove(filepath)
