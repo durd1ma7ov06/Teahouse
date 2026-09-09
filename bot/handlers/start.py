@@ -11,6 +11,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.config import settings
 from db.session import async_session
 from db.models import User, Referral, ReputationScore, Profile
 from bot.keyboards.inline import start_keyboard
@@ -65,15 +66,15 @@ async def about_teahouse(callback: CallbackQuery):
 
     await callback.message.edit_text(
         "Teahouse — Toshkentdagi tadbirkorlar va mutaxassislarni qahvaxonada "
-        "bitta stol atrofida uchrashtiruvchi xizmat.\n\n"
+        "bitta stol atrofida uchrashtiruvchi professional networking xizmati.\n\n"
         "Qanday ishlaydi:\n"
-        "1. Ikki bosqichli anketani to'ldirasiz (o'zingiz va sizga kerakli sheriklar haqida)\n"
-        "2. Sun'iy intellekt sizga mos 3 nafar suhbatdoshni tanlaydi\n"
-        "3. Uchrashuv joyi band qilinadi (99,000 UZS)\n"
-        "4. Chorshanba kuni soat 20:00 da shinam qahvaxonada uchrashuv bo'lib o'tadi.\n\n"
-        "Maqsad: o'zaro manfaatli va professional networking muhitini yaratish.\n\n"
-        "Har hafta, har chorshanba, soat 20:00 da.",
+        "1. Ikki bosqichli anketani to'ldirasiz (o'zingiz va qidirilayotgan sheriklaringiz haqida)\n"
+        "2. Ro'yxatdan o'tish 25-sentyabr soat 23:59 da to'xtatiladi\n"
+        "3. Sun'iy intellekt sizga eng mos 3 nafar suhbatdoshni tanlaydi va Mini App akkauntingiz ochiladi\n"
+        "4. Belgilangan chorshanba kuni Toshkent markazidagi qulay qahvaxonada jonli uchrashuv bo'ladi.\n\n"
+        "Maqsad: Keraksiz reklamalarsiz, faqat o'zaro manfaatli professional aloqalar va hamkorlik muhiti.",
         reply_markup=start_keyboard(),
+        parse_mode=None,
     )
 
 
@@ -123,26 +124,53 @@ async def _get_or_create_user(
 
 
 async def _send_welcome(message: Message, first_name: str, has_profile: bool):
-    """Send welcome message based on user state."""
-    await message.answer(
-        "Xush kelibsiz. Asosiy menyudan foydalanishingiz mumkin:",
-        reply_markup=main_menu_keyboard(),
-    )
+    """Send clean, elegant welcome message based on user state and deadline."""
+    is_admin = message.from_user.id in settings.admin_ids_list
 
     if has_profile:
-        await message.answer(
+        text = (
             f"Assalomu alaykum, {first_name}.\n\n"
-            "Sizning profilingiz faol holatda. "
-            "Navbatdagi uchrashuv uchun taklif kutishingiz mumkin.",
-            reply_markup=start_keyboard(),
+            "Sizning anketangiz muvaffaqiyatli qabul qilingan va sun'iy intellekt tahlil tizimida faol holatda.\n\n"
+            "Eslatma:\n"
+            "- Ro'yxatdan o'tish 25-sentyabr soat 23:59 gacha davom etadi;\n"
+            "- 25-sentyabr kuni sun'iy intellekt barcha anketalarni tahlil qilib, sizga mos 3 nafar sherikni tanlaydi;\n"
+            "- Shu kuni sizga shaxsiy Telegram Mini App akkauntingiz va uchrashuv stoli e'lon qilinadi.\n\n"
+            "Hozircha boshqa hech qanday amal bajarishingiz shart emas. Anketangizni ko'rish uchun 'Mening anketam' tugmasidan foydalanishingiz mumkin."
+        )
+        await message.answer(
+            text,
+            reply_markup=main_menu_keyboard(is_admin=is_admin),
+            parse_mode=None,
+        )
+    elif not settings.is_registration_open():
+        text = (
+            f"Assalomu alaykum, {first_name}.\n\n"
+            "Kechirasiz, Teahouse 1-mavsumi uchun saralash va ro'yxatdan o'tish 25-sentyabr kuni yakunlangan.\n\n"
+            "Hozirda sun'iy intellekt ro'yxatdan o'tgan qatnashchilarni o'zaro mos stollarga taqsimlamoqda.\n"
+            "Keyingi mavsum ochilganda birinchilardan bo'lib xabar topishingiz uchun botimizda qoling."
+        )
+        await message.answer(
+            text,
+            reply_markup=main_menu_keyboard(is_admin=is_admin),
+            parse_mode=None,
         )
     else:
+        text = (
+            f"Assalomu alaykum, {first_name}. Teahouse professional networking hamjamiyatiga xush kelibsiz.\n\n"
+            "Biz Toshkentdagi tadbirkorlar, mutaxassislar va startapchilarni sun'iy intellekt orqali chuqur tahlil qilib, bir-biriga eng ko'p foydasi tegadigan 4 kishilik eksklyuziv stollarda birlashtiramiz.\n\n"
+            "Muhim sana: Ro'yxatdan o'tish va anketalarni saralash 25-sentyabr soat 23:59 gacha davom etadi. "
+            "25-sentyabrda qabul to'xtatilib, sun'iy intellekt siz uchun eng munosib sheriklarni tanlaydi va shaxsiy Mini App akkauntingizni faollashtiradi.\n\n"
+            "Keling, sizga eng to'g'ri sheriklarni topishimiz uchun yaqindan tanishib olaylik.\n\n"
+            "Boshlash uchun pastdagi tugmani bosing:"
+        )
         await message.answer(
-            f"Assalomu alaykum, {first_name}.\n\n"
-            "Teahouse — Toshkentdagi professional networking xizmati.\n\n"
-            "Sizga mos 3 nafar qiziqarli va foydali mutaxassis bilan tanishish uchun "
-            "ikki bosqichli qisqa anketani to'ldiring.\n\n"
-            "Savollarga matn yoki ovozli xabar ko'rinishida javob berishingiz mumkin.\n\n"
-            "Boshlash uchun pastdagi tugmani bosing:",
+            text,
             reply_markup=start_keyboard(),
+            parse_mode=None,
+        )
+        # Send clean keyboard
+        await message.answer(
+            "Asosiy menyu faollashdi:",
+            reply_markup=main_menu_keyboard(is_admin=is_admin),
+            parse_mode=None,
         )

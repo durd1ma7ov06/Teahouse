@@ -2,55 +2,46 @@ from aiogram.fsm.state import State, StatesGroup
 
 
 class InterviewStates(StatesGroup):
-    """FSM states for the two-stage onboarding flow."""
+    """FSM states for the comprehensive 10-12 question onboarding flow."""
 
-    # 1-Bosqich: Ro'yxatdan o'tish va o'zi haqida ma'lumot
-    stage1_full_name = State()       # Ism va familiya
-    stage1_phone = State()           # Telefon raqam
-    stage1_role = State()            # Kasb va lavozim
-    stage1_company = State()         # Kompaniya / Loyiha
-    stage1_industry = State()        # Faoliyat sohasi
-    stage1_seniority = State()       # Tajriba darajasi
-    stage1_age = State()             # Yoshi
+    # 1-BOSQICH: SHAXSIY VA KASBIY MA'LUMOTLAR HAMDA ERISHILGAN NATIJALAR
+    stage1_full_name = State()       # 1. Ism va familiya
+    stage1_phone = State()           # 2. Telefon raqam
+    stage1_role = State()            # 3. Kasb va asosiy lavozim
+    stage1_company = State()         # 4. Kompaniya / startap / loyiha
+    stage1_industry = State()        # 5. Faoliyat sohasi
+    stage1_seniority = State()       # 6. Tajriba darajasi va yillari
+    stage1_achievements = State()    # 7. Eng katta yutug'i, loyihasi yoki biznes ko'rsatkichi (daromad, jamoa, eksport)
+    stage1_age = State()             # 8. Yoshi
 
-    # 2-Bosqich: Qidirilayotgan sheriklar va uchrashuv talablari
-    stage2_partner_goal = State()    # Sherikdan ko'zlangan maqsad
-    stage2_target_industry = State() # Qaysi soha vakillari kerak
-    stage2_offer = State()           # Bo'lajak sheriklarga o'zining taklifi
-    stage2_expectations = State()    # Uchrashuvdan kutilma
+    # 2-BOSQICH: QIDIRILAYOTGAN SHERIKLAR VA UCHRASHUV TALABLARI
+    stage2_partner_goal = State()    # 9. Uchrashuvdan asosiy maqsad (Hammuassis, Investor, Mijozlar, Jamoa, Mentor)
+    stage2_target_industry = State() # 10. Qaysi soha vakillari bilan uchrashish kerak
+    stage2_target_seniority = State()# 11. Qidirilayotgan sherikning tajriba darajasi (founder, senior, investor)
+    stage2_offer = State()           # 12. O'zi boshqalarga qanday aniq foyda, tajriba yoki resurs bera oladi
+    stage2_expectations = State()    # 13. Stolda aynan qaysi amaliy muammo yoki mavzuni muhokama qilmoqchi
 
-    # Yakuniy ko'rib chiqish va tasdiqlash
+    # Yakuniy tasdiqlash
     confirming_profile = State()
     completed = State()
-
-    # Moslik uchun eski nomlar
-    asking_role = stage1_role
-    asking_goal = stage2_partner_goal
-    asking_offer = stage2_offer
-    asking_seniority = stage1_seniority
-    asking_age = stage1_age
-    asking_interests = stage2_expectations
 
 
 class OfferStates(StatesGroup):
     """FSM states for match offer and payment flow."""
-
-    offer_shown = State()          # User sees the offer (date/time only)
-    awaiting_payment = State()     # Waiting for payment
-    payment_confirmed = State()    # Payment received
+    offer_shown = State()
+    awaiting_payment = State()
+    payment_confirmed = State()
 
 
 class FeedbackStates(StatesGroup):
     """FSM states for post-meeting feedback."""
-
-    selecting_meet_again = State()   # Toggle who to meet again
-    selecting_no_shows = State()     # Who was not there?
-    feedback_submitted = State()     # Done
+    selecting_meet_again = State()
+    selecting_no_shows = State()
+    feedback_submitted = State()
 
 
 class ReportStates(StatesGroup):
     """FSM states for reporting a user."""
-
-    selecting_user = State()       # Who to report
-    entering_reason = State()      # Why
-    report_submitted = State()     # Done
+    selecting_user = State()
+    entering_reason = State()
+    report_submitted = State()

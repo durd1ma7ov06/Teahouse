@@ -24,9 +24,11 @@ class Profile(Base, TimestampMixin):
     seniority: Mapped[Optional[str]] = mapped_column(String(50))
     experience_years: Mapped[Optional[int]] = mapped_column(Integer)
     age: Mapped[Optional[int]] = mapped_column(Integer)
-    interests: Mapped[Optional[str]] = mapped_column(Text)
-    target_partner: Mapped[Optional[str]] = mapped_column(Text)
+    achievements: Mapped[Optional[str]] = mapped_column(Text)  # Eng katta yutuqlari va tajribasi
+    target_partner: Mapped[Optional[str]] = mapped_column(Text)  # Qidirayotgan sherigi
     target_industry: Mapped[Optional[str]] = mapped_column(String(255))
+    target_seniority: Mapped[Optional[str]] = mapped_column(String(100))  # Qidirayotgan sherigining darajasi
+    interests: Mapped[Optional[str]] = mapped_column(Text)  # Muhokama mavzulari
     bio_summary: Mapped[Optional[str]] = mapped_column(Text)
 
     # Relationships

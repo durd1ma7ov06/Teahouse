@@ -21,13 +21,40 @@ logger = logging.getLogger(__name__)
 router = Router(name="common")
 
 
+@router.message(F.text.in_(["Teahouse Mini App", "Mini App"]))
+@router.message(Command("app"))
+async def open_mini_app(message: Message):
+    """Teahouse Mini Appga kirish."""
+    from bot.config import settings
+    from aiogram.types import WebAppInfo
+
+    if settings.webapp_url and settings.webapp_url.startswith("https://"):
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Teahouse Mini Appni ochish", web_app=WebAppInfo(url=settings.webapp_url))]
+        ])
+    else:
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Teahouse Mini Appni ochish", url=settings.webapp_url or "http://localhost:8000")]
+        ])
+
+    await message.answer(
+        "Teahouse Telegram Mini App:\n\n"
+        "- 4 kishilik interaktiv stol simulyatori\n"
+        "- Ikki bosqichli vizual anketa\n"
+        "- Shaxsiy VIP Networking Pass\n"
+        "- Toshkent qahvaxonalari va Chorshanba taymeri\n\n"
+        "Mini Appni ochish uchun pastdagi tugmani bosing:",
+        reply_markup=kb,
+    )
+
+
 @router.message(F.text.in_(["Anketa / Ro'yxatdan o'tish", "☕ Suhbat / Intervyu", "Ro'yxatdan o'tish", "Suhbat / Intervyu"]))
 async def menu_interview(message: Message, state: FSMContext):
     """Anketa to'ldirishni asosiy menyudan boshlash."""
     await _begin_stage1(message, state, message.from_user.first_name)
 
 
-@router.message(F.text.in_(["Mening profilim", "👤 Mening profilim"]))
+@router.message(F.text.in_(["Mening profilim", "👤 Mening profilim", "👤 Mening anketam", "Mening anketam", "Anketam"]))
 @router.message(Command("status"))
 async def status_command(message: Message):
     """Foydalanuvchining to'liq profili (1 va 2-bosqich ma'lumotlari)."""
@@ -87,7 +114,7 @@ async def status_command(message: Message):
             f"Holat: Faol (navbatdagi uchrashuv havzasida)"
         )
 
-        await message.answer(profile_text, reply_markup=kb)
+        await message.answer(profile_text, reply_markup=kb, parse_mode=None)
 
 
 @router.message(F.text.in_(["Haftalik uchrashuv", "📅 Haftalik uchrashuv"]))
@@ -178,6 +205,13 @@ async def report_command(message: Message):
         "Har bir murojaat ma'muriyat tomonidan ko'rib chiqiladi.",
         reply_markup=report_keyboard(),
     )
+
+
+@router.message(F.text.in_(["⚙️ Admin boshqaruvi", "Admin boshqaruvi", "Admin"]))
+async def forward_admin(message: Message):
+    """Admin menyusiga o'tish."""
+    from bot.handlers.admin import admin_dashboard
+    await admin_dashboard(message)
 
 
 @router.message(F.text | F.voice)

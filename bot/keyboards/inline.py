@@ -1,12 +1,20 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from bot.config import settings
 
 
 def start_keyboard() -> InlineKeyboardMarkup:
-    """Boshlash va ma'lumot klaviaturasi (emojilarsiz)."""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Boshlash", callback_data="start_interview")],
-        [InlineKeyboardButton(text="Teahouse haqida", callback_data="about_teahouse")],
-    ])
+    """Boshlash va ma'lumot klaviaturasi."""
+    if settings.is_registration_open():
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Anketani boshlash", callback_data="start_interview")],
+            [InlineKeyboardButton(text="Loyiha haqida", callback_data="about_teahouse")],
+        ])
+    else:
+        buttons = []
+        if settings.webapp_url and settings.webapp_url.startswith("https://"):
+            buttons.append([InlineKeyboardButton(text="Teahouse Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
+        buttons.append([InlineKeyboardButton(text="Loyiha haqida", callback_data="about_teahouse")])
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def confirm_keyboard() -> InlineKeyboardMarkup:
@@ -81,6 +89,16 @@ def target_industry_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="Marketing va savdo mutaxassislari", callback_data="tgt_marketing")],
         [InlineKeyboardButton(text="Ishlab chiqarish va xizmat ko'rsatish", callback_data="tgt_industry")],
         [InlineKeyboardButton(text="Boshqa aniq soha (qo'lda yozaman)", callback_data="tgt_other")],
+    ])
+
+
+def target_seniority_keyboard() -> InlineKeyboardMarkup:
+    """2-Bosqich: Qidirilayotgan sherikning tajriba darajasi."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Biznes egalari / Top-menejerlar", callback_data="tsen_founder")],
+        [InlineKeyboardButton(text="Katta mutaxassislar (Senior / 5+ yil)", callback_data="tsen_senior")],
+        [InlineKeyboardButton(text="O'rta darajadagi mutaxassislar (Mid)", callback_data="tsen_mid")],
+        [InlineKeyboardButton(text="Darajaning farqi yo'q (G'oyasi borlar)", callback_data="tsen_any")],
     ])
 
 

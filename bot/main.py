@@ -18,7 +18,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from bot.config import settings
-from bot.handlers import start_router, interview_router, common_router
+from bot.handlers import start_router, interview_router, common_router, admin_router
 from bot.services.notifications import set_bot
 from bot.services.scheduler import create_scheduler
 
@@ -35,10 +35,10 @@ async def main():
     """Initialize and start the bot."""
     logger.info("🍵 Teahouse bot ishga tushmoqda...")
 
-    # Initialize bot with Markdown as default parse mode
+    # Initialize bot with None as default parse mode (prevents unescaped text crashes)
     bot = Bot(
         token=settings.bot_token,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
+        default=DefaultBotProperties(parse_mode=None),
     )
 
     # FSM storage: Redis mavjud bo'lsa Redis, bo'lmasa ichki xotira (MemoryStorage)
@@ -58,7 +58,8 @@ async def main():
     # Dispatcher
     dp = Dispatcher(storage=storage)
 
-    # Register routers
+    # Register routers (admin router first)
+    dp.include_router(admin_router)
     dp.include_router(start_router)
     dp.include_router(interview_router)
     dp.include_router(common_router)
@@ -80,11 +81,26 @@ async def main():
     scheduler.start()
     logger.info("✅ Scheduler ishga tushdi")
 
+    # Start FastAPI WebApp server concurrently
+    import uvicorn
+    from webapp.server import app as web_app
+
+    web_config = uvicorn.Config(
+        app=web_app,
+        host="0.0.0.0",
+        port=settings.admin_port,
+        log_level="warning",
+    )
+    web_server = uvicorn.Server(web_config)
+    web_task = asyncio.create_task(web_server.serve())
+    logger.info(f"✅ WebApp & Mini App server ishga tushdi: http://0.0.0.0:{settings.admin_port}")
+
     # Start polling
     logger.info("✅ Bot tayyor — polling boshlandi")
     try:
         await dp.start_polling(bot)
     finally:
+        web_server.should_exit = True
         scheduler.shutdown()
         await bot.session.close()
 

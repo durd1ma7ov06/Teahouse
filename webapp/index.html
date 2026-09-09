@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Teahouse — Toshkent Professional Networking</title>
+  
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand-logo">
+        <div class="logo-badge">TH</div>
+        <div>
+          <div class="brand-title">Tea<span>house</span></div>
+          <div class="brand-subtitle">Tashkent Networking</div>
+        </div>
+      </div>
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        <span>Matching Faol</span>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="nav-tab-btn active" data-tab="overview" id="tab-btn-overview">Stol & Boshqaruv</button>
+      <button class="nav-tab-btn" data-tab="onboarding" id="tab-btn-onboarding">Anketa (2 Bosqich)</button>
+      <button class="nav-tab-btn" data-tab="venues" id="tab-btn-venues">Qahvaxonalar</button>
+    </nav>
+
+    <!-- TAB 1: OVERVIEW & TABLE SIMULATOR -->
+    <main id="tab-overview" class="tab-content active">
+      
+      <!-- Countdown Banner -->
+      <div class="countdown-box">
+        <div>
+          <div class="countdown-label">Navbatdagi uchrashuv:</div>
+          <div class="countdown-event">Chorshanba, 20:00</div>
+        </div>
+        <div class="countdown-timer" id="countdown-display">0k 00s 00m 00s</div>
+      </div>
+
+      <!-- Hero Card -->
+      <div class="hero-card">
+        <span class="hero-tag">Yopiq Professional Klub</span>
+        <h1 class="hero-title">Toshkentdagi 4 kishilik mos stol uchrashuvlari</h1>
+        <p class="hero-desc">
+          Biz professionallarni virtual tarmoqlarda emas, markazdagi shinam qahvaxonada bitta stol atrofida birlashtiramiz. 
+          Sun'iy intellekt har bir ishtirokchining maqsadi va sohasini tahlil qilib, bir-biriga eng ko'p foyda bera oladigan 4 kishini saralaydi.
+        </p>
+      </div>
+
+      <!-- Interactive 4-Seat Table Simulator -->
+      <div class="table-simulator">
+        <div class="table-title">Interaktiv 4 Kishilik Stol Simulyatori</div>
+        <div class="table-subtitle">O'rindiqni bosing va o'zaro manfaatli moslikni ko'ring</div>
+
+        <div class="round-table-container">
+          <div class="round-table-center">
+            <span class="table-center-text">Teahouse</span>
+            <span class="table-center-sub">4 Kishi</span>
+          </div>
+
+          <!-- 4 Seats -->
+          <div class="seat-item seat-top user-seat active" data-seat="seat1" id="seat-1">
+            <span class="seat-badge">Siz</span>
+            <span class="seat-role">Asoschi</span>
+          </div>
+
+          <div class="seat-item seat-right" data-seat="seat2" id="seat-2">
+            <span class="seat-badge">Moslik</span>
+            <span class="seat-role">Investor</span>
+          </div>
+
+          <div class="seat-item seat-bottom" data-seat="seat3" id="seat-3">
+            <span class="seat-badge">Moslik</span>
+            <span class="seat-role">Tech Lead</span>
+          </div>
+
+          <div class="seat-item seat-left" data-seat="seat4" id="seat-4">
+            <span class="seat-badge">Moslik</span>
+            <span class="seat-role">Marketing</span>
+          </div>
+        </div>
+
+        <!-- Seat detail display -->
+        <div class="seat-info-card">
+          <div class="seat-info-header" id="seat-info-role">Startap asoschisi (Siz)</div>
+          <div class="seat-info-body" id="seat-info-detail">
+            B2B SaaS platforma ustida ishlaydi. 99% moslik: Yangi bozorlarga chiqish va strategik hamkorlar qidirmoqda.
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action -->
+      <button class="btn-primary" onclick="switchTab('onboarding')">
+        <span>Anketani To'ldirish va Joy Band Qilish</span>
+      </button>
+
+    </main>
+
+    <!-- TAB 2: TWO-STAGE ONBOARDING & PASS -->
+    <section id="tab-onboarding" class="tab-content">
+
+      <!-- Step Indicator -->
+      <div class="form-step-indicator">
+        <div class="step-indicator-bar">
+          <div class="step-indicator-progress"></div>
+        </div>
+        <div class="step-node active" data-step="1">
+          <div class="step-circle">1</div>
+          <div class="step-label">O'zingiz</div>
+        </div>
+        <div class="step-node" data-step="2">
+          <div class="step-circle">2</div>
+          <div class="step-label">Sheriklar</div>
+        </div>
+        <div class="step-node" data-step="3">
+          <div class="step-circle">3</div>
+          <div class="step-label">Pass ID</div>
+        </div>
+      </div>
+
+      <!-- STEP 1: Personal & Professional Details -->
+      <div id="form-step-1" class="form-step-container">
+        <div class="form-card">
+          <h2 style="font-family: 'Outfit'; font-size: 18px; margin-bottom: 16px;">1-Bosqich: Shaxsiy va kasbiy ma'lumotlar</h2>
+
+          <div class="form-group">
+            <label class="form-label" for="input-full-name">To'liq ism va familiyangiz *</label>
+            <input type="text" id="input-full-name" class="form-control" placeholder="Masalan: Alisher Qodirov">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="input-phone">Telefon raqamingiz *</label>
+            <input type="tel" id="input-phone" class="form-control" placeholder="+998901234567">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="input-role">Kasbingiz va lavozimingiz *</label>
+            <input type="text" id="input-role" class="form-control" placeholder="Masalan: Senior Backend dasturchi, Bosh direktor">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="input-company">Kompaniya yoki loyiha nomi</label>
+            <input type="text" id="input-company" class="form-control" placeholder="Masalan: FinTech startup yoki Kompaniya nomi">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Faoliyat sohangiz *</label>
+            <div class="chip-grid">
+              <div class="chip-btn industry-chip selected" data-val="Axborot texnologiyalari (IT)">IT & Dasturlash</div>
+              <div class="chip-btn industry-chip" data-val="Moliya va investitsiya">Moliya & Bank</div>
+              <div class="chip-btn industry-chip" data-val="Savdo va xizmatlar">Savdo & Riteyl</div>
+              <div class="chip-btn industry-chip" data-val="Marketing va reklama">Marketing & PR</div>
+              <div class="chip-btn industry-chip" data-val="Ishlab chiqarish">Ishlab chiqarish</div>
+              <div class="chip-btn industry-chip" data-val="Qurilish va mulk">Qurilish & Mulk</div>
+              <div class="chip-btn industry-chip" data-val="Ta'lim va konsalting">Ta'lim & Konsalting</div>
+              <div class="chip-btn industry-chip" data-val="Tibbiyot">Tibbiyot</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Tajriba darajangiz *</label>
+            <div class="seniority-cards">
+              <div class="seniority-card" data-val="Boshlang'ich" data-years="1">
+                <span class="seniority-card-title">Boshlang'ich daraja</span>
+                <span class="seniority-card-years">0 - 2 yil</span>
+              </div>
+              <div class="seniority-card selected" data-val="O'rta mutaxassis" data-years="4">
+                <span class="seniority-card-title">O'rta mutaxassis (Mid)</span>
+                <span class="seniority-card-years">3 - 5 yil</span>
+              </div>
+              <div class="seniority-card" data-val="Katta mutaxassis" data-years="8">
+                <span class="seniority-card-title">Katta mutaxassis (Senior)</span>
+                <span class="seniority-card-years">6 - 10 yil</span>
+              </div>
+              <div class="seniority-card" data-val="Rahbar / Asoschi" data-years="12">
+                <span class="seniority-card-title">Rahbar / Biznes asoschisi</span>
+                <span class="seniority-card-years">10+ yil</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Yoshingiz *</label>
+            <div class="chip-grid dense">
+              <div class="chip-btn age-chip" data-val="21">18-24</div>
+              <div class="chip-btn age-chip selected" data-val="28">25-30</div>
+              <div class="chip-btn age-chip" data-val="33">31-35</div>
+              <div class="chip-btn age-chip" data-val="38">36-40</div>
+              <div class="chip-btn age-chip" data-val="45">41-50</div>
+              <div class="chip-btn age-chip" data-val="55">50+</div>
+            </div>
+          </div>
+
+          <button type="button" class="btn-primary" id="btn-next-stage1">
+            <span>2-Bosqichga O'tish (Sheriklar Talabi)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Target Partner & Meeting Criteria -->
+      <div id="form-step-2" class="form-step-container" style="display: none;">
+        <div class="form-card">
+          <h2 style="font-family: 'Outfit'; font-size: 18px; margin-bottom: 16px;">2-Bosqich: Sizga qanday sheriklar kerak?</h2>
+
+          <div class="form-group">
+            <label class="form-label">Sheriklikdan ko'zlangan asosiy maqsad *</label>
+            <div class="chip-grid">
+              <div class="chip-btn goal-chip selected" data-val="Biznes hamkor / Hammuassis">Biznes hamkor</div>
+              <div class="chip-btn goal-chip" data-val="Investor / Moliyalashtirish">Investor topish</div>
+              <div class="chip-btn goal-chip" data-val="Mijozlar va buyurtmachilar">Mijozlar topish</div>
+              <div class="chip-btn goal-chip" data-val="Malakali mutaxassis / Jamoa">Jamoa yig'ish</div>
+              <div class="chip-btn goal-chip" data-val="Mentor / Maslahatchi">Mentor / Maslahat</div>
+              <div class="chip-btn goal-chip" data-val="Tajriba almashish va networking">Tajriba almashish</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Qaysi soha vakillari bilan uchrashmoqchisiz? *</label>
+            <div class="chip-grid">
+              <div class="chip-btn target-ind-chip selected" data-val="Barcha sohalar">Barcha sohalar</div>
+              <div class="chip-btn target-ind-chip" data-val="Axborot texnologiyalari (IT)">IT & Tech</div>
+              <div class="chip-btn target-ind-chip" data-val="Biznes va investitsiya">Biznes & Moliya</div>
+              <div class="chip-btn target-ind-chip" data-val="Marketing va savdo">Marketing & Savdo</div>
+              <div class="chip-btn target-ind-chip" data-val="Ishlab chiqarish">Ishlab chiqarish</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="input-offer">Bo'lajak suhbatdoshlarga qanday yordam bera olasiz?</label>
+            <textarea id="input-offer" class="form-control" placeholder="Masalan: IT tizimlar yaratish, investitsiya jalb qilish yoki marketing strategiyalari bo'yicha yordam bera olaman"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="input-interests">Uchrashuvda kutilayotgan mavzular</label>
+            <textarea id="input-interests" class="form-control" placeholder="Masalan: Yangi startaplar, eksport imkoniyatlari, sun'iy intellekt integratsiyasi"></textarea>
+          </div>
+
+          <button type="button" class="btn-primary" id="btn-submit-form">
+            <span>Anketani Yakunlash va Pass Yaratish</span>
+          </button>
+
+          <button type="button" class="btn-secondary" id="btn-prev-stage1">
+            <span>Orqaga (1-bosqichga qaytish)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Generated VIP Pass Card -->
+      <div id="form-step-3" class="form-step-container" style="display: none;">
+        
+        <div class="vip-pass">
+          <div class="vip-header">
+            <span class="vip-type">Teahouse Member Pass</span>
+            <span class="vip-id" id="pass-id">TH-88291</span>
+          </div>
+
+          <div class="vip-name" id="pass-name">Alisher Qodirov</div>
+          <div class="vip-role" id="pass-role">Senior Backend Dasturchi</div>
+
+          <div class="vip-details-grid">
+            <div>
+              <div class="vip-item-label">Soha</div>
+              <div class="vip-item-value" id="pass-industry">IT & Dasturlash</div>
+            </div>
+            <div>
+              <div class="vip-item-label">Tajriba</div>
+              <div class="vip-item-value" id="pass-seniority">O'rta mutaxassis</div>
+            </div>
+            <div>
+              <div class="vip-item-label">Maqsad</div>
+              <div class="vip-item-value" id="pass-target">Biznes hamkor</div>
+            </div>
+            <div>
+              <div class="vip-item-label">Izlanmoqda</div>
+              <div class="vip-item-value" id="pass-target-ind">Barcha sohalar</div>
+            </div>
+          </div>
+
+          <div class="vip-status-bar">
+            <span>Status: Faol (Matching Navbatida)</span>
+            <span>Chorshanba 20:00</span>
+          </div>
+        </div>
+
+        <div class="hero-card" style="text-align: center;">
+          <h3 style="font-family: 'Outfit'; font-size: 18px; margin-bottom: 8px;">Anketa muvaffaqiyatli qabul qilindi!</h3>
+          <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+            Sizning mezonlaringizga mos keladigan 3 nafar tadbirkor va mutaxassis saralanishi bilan sizga Telegram bot orqali uchrashuv taklifi yuboriladi.
+          </p>
+          <button class="btn-primary" onclick="switchTab('overview')">
+            <span>Bosh Sahifaga Qaytish</span>
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- TAB 3: VENUES & CULTURE -->
+    <section id="tab-venues" class="tab-content">
+      <div class="hero-card">
+        <span class="hero-tag">Uchrashuv Joylari</span>
+        <h2 class="hero-title">Toshkent Markazidagi Shinam Qahvaxonalar</h2>
+        <p class="hero-desc">
+          Biz faqat shinam, qulay va ishbilarmonlik suhbatlari uchun mos keladigan nufuzli maskanlarni tanlaymiz.
+        </p>
+      </div>
+
+      <div class="venue-card">
+        <div>
+          <div class="venue-name">B&B Coffee House</div>
+          <div class="venue-location">Shota Rustaveli ko'chasi, Yakkasaroy</div>
+        </div>
+        <div class="venue-badge">Partner Cafe</div>
+      </div>
+
+      <div class="venue-card">
+        <div>
+          <div class="venue-name">Ecorn Bakery & Cafe</div>
+          <div class="venue-location">Amir Temur shoh ko'chasi, Mirobod</div>
+        </div>
+        <div class="venue-badge">Partner Cafe</div>
+      </div>
+
+      <div class="venue-card">
+        <div>
+          <div class="venue-name">Bon! Cafe</div>
+          <div class="venue-location">Chexov ko'chasi, Markaz</div>
+        </div>
+        <div class="venue-badge">Partner Cafe</div>
+      </div>
+
+      <div class="venue-card">
+        <div>
+          <div class="venue-name">Socials Cafe</div>
+          <div class="venue-location">Taras Shevchenko ko'chasi</div>
+        </div>
+        <div class="venue-badge">Partner Cafe</div>
+      </div>
+
+      <div class="hero-card" style="margin-top: 20px;">
+        <h3 style="font-family: 'Outfit'; font-size: 16px; margin-bottom: 8px;">Uchrashuv Etiketi</h3>
+        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+          - Uchrashuv 20:00 da boshlanadi. Kechikmasdan kelish hurmat belgisidir.<br>
+          - Smartfonlarni stol ustiga qo'ymaslik va jonli muloqotga diqqat qaratish tavsiya etiladi.<br>
+          - Har bir ishtirokchi o'z buyurtmasi uchun qahvaxonaga to'g'ridan-to'g'ri to'laydi.
+        </p>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-message" class="toast-msg">Xabar</div>
+
+  <!-- Application Script -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

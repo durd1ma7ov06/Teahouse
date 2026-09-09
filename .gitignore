@@ -9,3 +9,5 @@ teahouse.db
 *.log
 .env
 .DS_Store
+cloudflared.exe
+*.exe
