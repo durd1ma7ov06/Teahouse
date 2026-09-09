@@ -90,31 +90,38 @@ async def _get_or_create_user(
     user = result.scalar_one_or_none()
 
     if user is None:
-        user = User(
-            telegram_id=message.from_user.id,
-            username=message.from_user.username,
-            first_name=message.from_user.first_name or "Foydalanuvchi",
-        )
-        session.add(user)
-        await session.flush()
-
-        # Create default reputation
-        rep = ReputationScore(user_id=user.id, score=50.0)
-        session.add(rep)
-
-        # Handle referral
-        if referral_code and referral_code.startswith("ref_"):
-            code = referral_code
-            ref_result = await session.execute(
-                select(Referral).where(Referral.deep_link_code == code)
+        try:
+            user = User(
+                telegram_id=message.from_user.id,
+                username=message.from_user.username,
+                first_name=message.from_user.first_name or "Foydalanuvchi",
             )
-            referral = ref_result.scalar_one_or_none()
-            if referral and referral.referred_id is None:
-                referral.referred_id = user.id
-                referral.status = "registered"
-                user.referred_by = referral.referrer_id
+            session.add(user)
+            await session.flush()
 
-        logger.info(f"New user created: {user}")
+            # Create default reputation
+            rep = ReputationScore(user_id=user.id, score=50.0)
+            session.add(rep)
+
+            # Handle referral
+            if referral_code and referral_code.startswith("ref_"):
+                code = referral_code
+                ref_result = await session.execute(
+                    select(Referral).where(Referral.deep_link_code == code)
+                )
+                referral = ref_result.scalar_one_or_none()
+                if referral and referral.referred_id is None:
+                    referral.referred_id = user.id
+                    referral.status = "registered"
+                    user.referred_by = referral.referrer_id
+
+            logger.info(f"New user created: {user}")
+        except Exception:
+            await session.rollback()
+            result = await session.execute(
+                select(User).where(User.telegram_id == message.from_user.id)
+            )
+            user = result.scalar_one()
     else:
         user.username = message.from_user.username
         user.first_name = message.from_user.first_name or user.first_name
