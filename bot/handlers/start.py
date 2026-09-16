@@ -1,5 +1,6 @@
 """/start handler — entry point, deep link referral, first contact."""
 
+import heapq
 import logging
 from typing import Optional
 
@@ -138,7 +139,8 @@ async def _get_or_create_user(
 
 async def _send_welcome(message: Message, first_name: str, has_profile: bool):
     """Send clean, elegant welcome message based on user state and deadline."""
-    is_admin = message.from_user.id in settings.admin_ids_list
+    from bot.handlers.admin import is_admin_user
+    is_admin = await is_admin_user(message.from_user.id)
 
     if has_profile:
         bot_info = await message.bot.get_me()
@@ -187,8 +189,10 @@ async def _send_welcome(message: Message, first_name: str, has_profile: bool):
             "Biznesingiz yoki loyihangiz uchun mos hamkorlar, investorlar va tajribali mutaxassislar davrasiga qo'shilish uchun saralash anketasini to'ldiring.\n\n"
             "👇 Anketani to'ldirish uchun pastdagi tugmani bosing:"
         )
-        # Pastdagi barcha tugmalarni tozalash
-        await message.answer("Xush kelibsiz!", reply_markup=ReplyKeyboardRemove())
+        if is_admin:
+            await message.answer("👑 Admin boshqaruvi faol.", reply_markup=main_menu_keyboard(is_admin=True))
+        else:
+            await message.answer("Xush kelibsiz!", reply_markup=ReplyKeyboardRemove())
         await message.answer(
             text,
             reply_markup=start_keyboard(),

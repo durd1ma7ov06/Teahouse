@@ -204,11 +204,28 @@ async def report_command(message: Message):
     )
 
 
+@router.message(Command("myid", "id"))
+async def my_id_command(message: Message):
+    """Foydalanuvchining shaxsiy Telegram ID raqamini ko'rsatish."""
+    from bot.handlers.admin import is_admin_user
+    is_admin = await is_admin_user(message.from_user.id)
+    admin_tag = "👑 Admin" if is_admin else "👤 Foydalanuvchi"
+    await message.answer(
+        f"🆔 **Sizning Telegram ma'lumotlaringiz:**\n\n"
+        f"• Telegram ID: `{message.from_user.id}`\n"
+        f"• Ism: {message.from_user.first_name}\n"
+        f"• Username: @{message.from_user.username or 'yo\'q'}\n"
+        f"• Maqom: {admin_tag}\n\n"
+        f"Agar siz admin bo'lishni xohlasangiz, Telegram ID raqamingizni bosh adminga yuboring.",
+        parse_mode="Markdown",
+    )
+
+
 @router.message(F.text.in_(["⚙️ Admin boshqaruvi", "Admin boshqaruvi", "Admin"]))
-async def forward_admin(message: Message):
+async def forward_admin(message: Message, state: FSMContext):
     """Admin menyusiga o'tish."""
-    from bot.handlers.admin import admin_dashboard
-    await admin_dashboard(message)
+    from bot.handlers.admin import admin_dashboard_handler
+    await admin_dashboard_handler(message, state)
 
 
 @router.message(F.text | F.voice)

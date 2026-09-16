@@ -20,6 +20,7 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
     credit_balance: Mapped[int] = mapped_column(Integer, default=0)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     referred_by: Mapped[Optional[int]] = mapped_column(
         BigInteger, ForeignKey("users.id"), nullable=True
     )
